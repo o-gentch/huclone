@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_05_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_05_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -39,6 +39,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_05_000004) do
     t.index ["status"], name: "index_contents_on_status"
   end
 
+  create_table "conversations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "persona_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["persona_id"], name: "index_conversations_on_persona_id"
+  end
+
+  create_table "messages", force: :cascade do |t|
+    t.text "body", null: false
+    t.bigint "conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.string "mode", default: "strict", null: false
+    t.string "role", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id", "created_at"], name: "index_messages_on_conversation_id_and_created_at"
+    t.index ["conversation_id"], name: "index_messages_on_conversation_id"
+  end
+
   create_table "personas", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -52,4 +70,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_05_000004) do
 
   add_foreign_key "chunks", "contents"
   add_foreign_key "contents", "personas"
+  add_foreign_key "conversations", "personas"
+  add_foreign_key "messages", "conversations"
 end
