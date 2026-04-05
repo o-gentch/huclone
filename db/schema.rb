@@ -10,10 +10,34 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_05_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_05_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
+
+  create_table "chunks", force: :cascade do |t|
+    t.bigint "content_id", null: false
+    t.datetime "created_at", null: false
+    t.vector "embedding", limit: 1536
+    t.integer "position", null: false
+    t.text "text", null: false
+    t.datetime "updated_at", null: false
+    t.index ["content_id", "position"], name: "index_chunks_on_content_id_and_position"
+    t.index ["content_id"], name: "index_chunks_on_content_id"
+  end
+
+  create_table "contents", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "is_exemplar", default: false, null: false
+    t.bigint "persona_id", null: false
+    t.string "source"
+    t.string "status", default: "pending", null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["is_exemplar"], name: "index_contents_on_is_exemplar"
+    t.index ["persona_id"], name: "index_contents_on_persona_id"
+    t.index ["status"], name: "index_contents_on_status"
+  end
 
   create_table "personas", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -25,4 +49,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_05_000002) do
     t.bigint "user_id"
     t.index ["user_id"], name: "index_personas_on_user_id"
   end
+
+  add_foreign_key "chunks", "contents"
+  add_foreign_key "contents", "personas"
 end

@@ -1,0 +1,10 @@
+class Chunk < ApplicationRecord
+  belongs_to :content
+
+  has_neighbors :embedding
+
+  validates :text, presence: true
+  validates :position, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+
+  scope :ordered, -> { order(:position) }
+end
