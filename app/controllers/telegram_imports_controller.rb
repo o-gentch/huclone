@@ -13,7 +13,7 @@ class TelegramImportsController < ApplicationController
       return
     end
 
-    result = TelegramImporter.import(persona: @persona, file: file)
+    result = Imports::Telegram.call(persona: @persona, file: file)
 
     notice = "Импортировано #{result[:imported]} постов"
     notice += ", пропущено #{result[:skipped]}" if result[:skipped] > 0
