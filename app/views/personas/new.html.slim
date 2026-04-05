@@ -1,0 +1,33 @@
+= content_for :title, "Создать аватара"
+
+.w-full.max-w-xl.mx-auto
+  .mb-8.text-center
+    .text-4xl.mb-4 🪞
+    h1 class="text-2xl font-semibold text-gray-900" Создать аватара
+
+  = form_with model: @persona, class: "space-y-5" do |f|
+    - if @persona.errors.any?
+      .bg-red-50.border.border-red-200.text-red-700.text-sm.rounded-xl.px-4.py-3
+        = @persona.errors.full_messages.first
+
+    div
+      = f.label :name, "Имя аватара", class: "block text-sm font-medium text-gray-700 mb-1.5"
+      = f.text_field :name,
+          placeholder: "Например: Марина",
+          class: "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent",
+          autofocus: true
+
+    div
+      = f.label :system_prompt, class: "block text-sm font-medium text-gray-700 mb-1.5" do
+        | Описание
+        span class="text-gray-400 font-normal"  (необязательно)
+      = f.text_area :system_prompt,
+          placeholder: "Кто этот аватар? Как он должен отвечать?",
+          rows: 4,
+          class: "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none"
+      p class="text-xs text-gray-400 mt-1.5"
+        | Можно оставить пустым — аватар сам построит свою карту личности из загруженных текстов.
+
+    .pt-2
+      = f.submit "Создать и добавить тексты →",
+          class: "w-full bg-gray-900 text-white font-medium px-6 py-3 rounded-xl hover:bg-gray-700 transition-colors cursor-pointer"

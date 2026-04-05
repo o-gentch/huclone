@@ -1,0 +1,10 @@
+= content_for :title, "Добро пожаловать"
+
+.min-h-screen.flex.items-center.justify-center.-mt-20
+  .text-center.max-w-md
+    .text-5xl.mb-6 🪞
+    h1 class="text-2xl font-semibold text-gray-900 mb-3" Ваш AI-аватар
+    p class="text-gray-500 mb-8 leading-relaxed"
+      | Загрузите свои тексты — аватар научится думать и писать в вашем стиле.
+    = link_to "Создать аватара", new_persona_path,
+        class: "inline-block bg-gray-900 text-white font-medium px-6 py-3 rounded-xl hover:bg-gray-700 transition-colors"
