@@ -8,7 +8,7 @@ class ContentProcessor
 
     content.update!(status: "processing")
 
-    chunks = split_into_chunks(content.source)
+    chunks = split_into_chunks(content.body)
     chunks.each_with_index do |chunk_text, position|
       content.chunks.create!(
         text: chunk_text,

@@ -1,0 +1,33 @@
+= content_for :title, "Импорт из Telegram"
+
+.w-full.max-w-2xl.mx-auto
+  .mb-8
+    = link_to "← Назад", persona_contents_path(@persona), class: "text-sm text-gray-400 hover:text-gray-600 transition-colors"
+    h1 class="text-2xl font-semibold text-gray-900 mt-3" Импорт из Telegram
+
+  .bg-amber-50.border.border-amber-200.rounded-xl.px-5.py-4.mb-6.text-sm.text-amber-800
+    p class="font-medium mb-1" Как получить файл?
+    ol class="list-decimal list-inside space-y-1 text-amber-700"
+      li Откройте Telegram Desktop
+      li Перейдите в нужный канал или чат
+      li Кликните на три точки → Экспорт истории чата
+      li Выберите формат JSON, снимите галочки с медиафайлов
+      li Загрузите полученный файл result.json ниже
+
+  - if flash[:error].present?
+    .bg-red-50.border.border-red-200.text-red-700.text-sm.rounded-xl.px-4.py-3.mb-4
+      = flash[:error]
+
+  = form_with url: persona_telegram_imports_path(@persona), multipart: true, class: "space-y-5" do |f|
+    div
+      label class="block text-sm font-medium text-gray-700 mb-1.5"
+        | Файл result.json
+      = file_field_tag "import[file]",
+          accept: ".json",
+          class: "w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+
+    .flex.gap-3.pt-2
+      = submit_tag "Импортировать посты",
+          class: "bg-gray-900 text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-gray-700 transition-colors cursor-pointer"
+      = link_to "Отмена", persona_contents_path(@persona),
+          class: "text-sm text-gray-400 hover:text-gray-600 transition-colors py-2.5"

@@ -3,6 +3,7 @@ Rails.application.routes.draw do
 
   resources :personas, only: [ :new, :create ] do
     resources :contents, only: [ :index, :new, :create, :destroy ]
+    resources :telegram_imports, only: [ :new, :create ]
     resources :conversations, only: [ :index, :new, :create, :show ] do
       resources :messages, only: [ :create ]
     end

@@ -12,20 +12,25 @@ class ContentsController < ApplicationController
   def create
     text = extract_text(params[:content])
     @content = @persona.contents.new(
-      title: params[:content][:title].presence || "Без названия",
-      source: text,
-      status: "pending"
+      title:   params[:content][:title].presence || Contents.build_title(text),
+      body:    text,
+      sources: [ { type: "manual" } ],
+      status:  "pending"
     )
 
     if text.blank?
-      @content.errors.add(:source, "не может быть пустым")
+      @content.errors.add(:body, "не может быть пустым")
       render :new, status: :unprocessable_entity
       return
     end
 
     if @content.save
       ProcessContentJob.perform_later(@content.id)
-      redirect_to persona_contents_path(@persona), notice: "Текст добавлен и отправлен на обработку"
+      if params[:add_more]
+        redirect_to new_persona_content_path(@persona), notice: "Сохранено. Добавьте следующий текст."
+      else
+        redirect_to persona_contents_path(@persona), notice: "Текст добавлен и отправлен на обработку"
+      end
     else
       render :new, status: :unprocessable_entity
     end
