@@ -1,5 +1,7 @@
 module Imports
   class Telegram
+    MIN_TEXT_LENGTH = 100
+
     def self.call(persona:, file:) = new(persona:, file:).call
 
     def initialize(persona:, file:)
@@ -19,10 +21,10 @@ module Imports
         next unless msg["type"] == "message"
 
         text = extract_text(msg["text"])
-        next if text.blank?
+        next if text.length < MIN_TEXT_LENGTH
 
         content = @persona.contents.create!(
-          title:   Content::TitleBuilder.build(text),
+          title:   Contents::TitleBuilder.build(text),
           body:    text,
           sources: [ { type: "telegram", date: msg["date"], channel: channel } ],
           status:  "pending"

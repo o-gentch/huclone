@@ -12,7 +12,7 @@ class ContentsController < ApplicationController
   def create
     text = extract_text(params[:content])
     @content = @persona.contents.new(
-      title:   params[:content][:title].presence || Content::TitleBuilder.build(text),
+      title:   params[:content][:title].presence || Contents::TitleBuilder.build(text),
       body:    text,
       sources: [ { type: "manual" } ],
       status:  "pending"

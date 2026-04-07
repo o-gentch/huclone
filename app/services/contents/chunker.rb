@@ -1,4 +1,4 @@
-module Content
+module Contents
   module Chunker
     CHUNK_SIZE = 1500
     CHUNK_OVERLAP = 200

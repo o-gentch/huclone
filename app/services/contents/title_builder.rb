@@ -1,4 +1,4 @@
-module Content
+module Contents
   module TitleBuilder
     def self.build(text)
       text.gsub(/\s+/, " ").strip.truncate(60)

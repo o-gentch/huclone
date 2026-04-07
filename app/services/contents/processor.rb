@@ -1,4 +1,4 @@
-module Content
+module Contents
   class Processor
     def self.call(...) = new(...).call
 
