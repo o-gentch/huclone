@@ -1,4 +1,4 @@
-module Persona
+module Personas
   class ExemplarSelector
     MAX_EXEMPLARS = 7
 

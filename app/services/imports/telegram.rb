@@ -22,6 +22,7 @@ module Imports
 
         text = extract_text(msg["text"])
         next if text.length < MIN_TEXT_LENGTH
+        next unless Filters.content_post?(text)
 
         content = @persona.contents.create!(
           title:   Contents::TitleBuilder.build(text),

@@ -26,6 +26,7 @@ class ContentsController < ApplicationController
 
     if @content.save
       ProcessContentJob.perform_later(@content.id)
+      BuildPersonalityMapJob.perform_later(@persona.id)
       if params[:add_more]
         redirect_to new_persona_content_path(@persona), notice: "Сохранено. Добавьте следующий текст."
       else

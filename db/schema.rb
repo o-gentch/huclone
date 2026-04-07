@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_05_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_07_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -38,6 +38,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_05_000007) do
     t.index ["is_exemplar"], name: "index_contents_on_is_exemplar"
     t.index ["persona_id"], name: "index_contents_on_persona_id"
     t.index ["status"], name: "index_contents_on_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'done'::character varying, 'failed'::character varying]::text[])", name: "contents_status_check"
   end
 
   create_table "conversations", force: :cascade do |t|
@@ -60,12 +61,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_05_000007) do
 
   create_table "personas", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.jsonb "linguistics", default: {}
     t.string "name", null: false
     t.jsonb "personality_map", default: {}
     t.datetime "personality_map_built_at"
     t.text "system_prompt"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.index ["linguistics"], name: "index_personas_on_linguistics", using: :gin
     t.index ["user_id"], name: "index_personas_on_user_id"
   end
 
