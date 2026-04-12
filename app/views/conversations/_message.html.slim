@@ -1,0 +1,13 @@
+- user_message = message.role == "user"
+
+div id=dom_id(message) class="flex #{'justify-end' if user_message}"
+  - if user_message
+    .max-w-lg.bg-gray-900.text-white.rounded-2xl.rounded-tr-sm.px-4.py-3.text-sm.leading-relaxed
+      = simple_format message.body, {}, wrapper_tag: "span"
+  - else
+    .max-w-lg.bg-white.border.border-gray-200.rounded-2xl.rounded-tl-sm.px-4.py-3.text-sm.leading-relaxed.text-gray-800
+      div id="message_#{message.id}_body"
+        - if message.body.blank?
+          span class="inline-block w-1 h-4 bg-gray-300 animate-pulse rounded-sm align-middle"
+        - else
+          = simple_format message.body, {}, wrapper_tag: "span"

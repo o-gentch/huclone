@@ -1,0 +1,27 @@
+= content_for :title, "Чат"
+
+.w-full.max-w-3xl.mx-auto
+  .flex.items-center.justify-between.mb-8
+    h1 class="text-2xl font-semibold text-gray-900" Разговоры
+    = button_to "Новый разговор", persona_conversations_path(@persona),
+        method: :post,
+        class: "bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+
+  - if @conversations.empty?
+    .text-center.py-20.text-gray-400
+      .text-4xl.mb-3 💬
+      p class="text-lg" Нет разговоров
+      p class="text-sm mt-1" Начните первый разговор с аватаром
+  - else
+    .space-y-2
+      - @conversations.each do |conversation|
+        = link_to persona_conversation_path(@persona, conversation),
+            class: "flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-gray-300 transition-colors" do
+          .min-w-0
+            p class="font-medium text-gray-900 text-sm"
+              | Разговор от #{conversation.created_at.strftime("%d.%m.%Y %H:%M")}
+            - last = conversation.messages.order(:created_at).last
+            - if last
+              p class="text-xs text-gray-400 mt-0.5 truncate" = last.body.truncate(60)
+          svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-300 shrink-0 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"

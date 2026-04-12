@@ -1,0 +1,29 @@
+div id="message_form"
+  = form_with url: persona_conversation_messages_path(persona, conversation),
+      scope: :message,
+      data: { action: "turbo:submit-start->chat#onSubmit" } do |f|
+
+    .bg-white.border.border-gray-200.rounded-2xl.px-4.pt-3.pb-3
+
+      / Mode toggle
+      .flex.gap-1.mb-3
+        - Message::MODES.each do |m|
+          label class="cursor-pointer"
+            = f.radio_button :mode, m, checked: (mode == m), class: "sr-only peer", id: "mode_#{m}"
+            span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors peer-checked:bg-gray-900 peer-checked:text-white peer-checked:border-gray-900 border-gray-200 text-gray-500 hover:border-gray-300"
+              - if m == "strict"
+                | 🔒 По материалам
+              - else
+                | 💡 Идеи
+
+      / Textarea
+      = f.text_area :body,
+          placeholder: "Напишите сообщение...",
+          rows: 2,
+          class: "w-full resize-none border-none outline-none text-sm bg-transparent text-gray-900 placeholder-gray-400 leading-relaxed",
+          data: { chat_target: "input", action: "keydown->chat#onKeydown input->chat#onInput" }
+
+      / Submit row
+      .flex.justify-end.mt-2
+        = f.submit "Отправить →",
+            class: "bg-gray-900 text-white text-sm font-medium px-4 py-1.5 rounded-xl hover:bg-gray-700 transition-colors cursor-pointer"

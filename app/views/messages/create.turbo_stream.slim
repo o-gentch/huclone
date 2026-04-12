@@ -1,0 +1,9 @@
+= turbo_stream.remove "thinking-indicator"
+
+= turbo_stream.append "messages" do
+  = render "conversations/message", message: @assistant_message
+
+= turbo_stream.replace "message_form" do
+  = render "conversations/form", persona: @persona, conversation: @conversation, mode: @user_message.mode
+
+= turbo_stream.action :scroll_to_bottom, "messages"

@@ -6,7 +6,7 @@ class Message < ApplicationRecord
 
   validates :role, inclusion: { in: ROLES }
   validates :mode, inclusion: { in: MODES }
-  validates :body, presence: true
+  validates :body, presence: true, if: -> { role == "user" }
 
   scope :by_user, -> { where(role: "user") }
   scope :by_assistant, -> { where(role: "assistant") }
