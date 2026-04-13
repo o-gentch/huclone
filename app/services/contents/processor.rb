@@ -12,7 +12,8 @@ module Contents
 
       @content.update!(status: "processing")
 
-      chunks = Contents::Chunker.chunk(@content.body)
+      body = sanitize_text(@content.body)
+      chunks = Contents::Chunker.chunk(body)
       chunks.each_with_index do |text, position|
         @content.chunks.create!(
           text: text,
@@ -30,6 +31,14 @@ module Contents
 
     def self.fail!(content_id)
       Content.find_by(id: content_id)&.update!(status: "failed")
+    end
+
+    private
+
+    def sanitize_text(text)
+      text
+        .encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+        .gsub("\u0000", "")
     end
   end
 end

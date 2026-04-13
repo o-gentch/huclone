@@ -2,6 +2,7 @@ module Personas
   class PersonalityMapBuilder
     BATCH_SIZE = 25
     INTERMEDIATE_GROUP_SIZE = 10
+    MAX_CONCURRENT = 5
 
     def self.call(...) = new(...).call
 
@@ -17,13 +18,7 @@ module Personas
 
       return if contents.empty?
 
-      observations = [].tap do |obs|
-        contents.in_batches(of: BATCH_SIZE) do |batch|
-          result = extract_patterns_from_batch(batch.to_a)
-          obs << result if result.present?
-        end
-      end
-
+      observations = extract_observations_in_parallel(contents)
       return if observations.empty?
 
       intermediate = if observations.size > INTERMEDIATE_GROUP_SIZE
@@ -46,8 +41,30 @@ module Personas
 
     private
 
+    def extract_observations_in_parallel(contents)
+      pool = Concurrent::FixedThreadPool.new(MAX_CONCURRENT)
+      futures = []
+
+      # Материализуем батчи в основном потоке — DB-запросы не уходят в треды
+      contents.in_batches(of: BATCH_SIZE) do |batch|
+        batch_array = batch.to_a
+        futures << Concurrent::Future.execute(executor: pool) do
+          extract_patterns_from_batch(batch_array)
+        end
+      end
+
+      futures.filter_map do |f|
+        result = f.value  # блокируемся до завершения каждого
+        Rails.logger.error("[PersonalityMapBuilder] batch failed: #{f.reason}") if f.rejected?
+        result
+      end
+    ensure
+      pool.shutdown
+      pool.wait_for_termination(5.minutes.to_i)
+    end
+
     def extract_patterns_from_batch(contents)
-      texts = contents.map.with_index(1) { |c, i| "#{i}. #{c.body}" }.join("\n\n")
+      texts = contents.map.with_index(1) { |c, i| "#{i}. #{sanitize_text(c.body)}" }.join("\n\n")
 
       @ai_client.chat(
         parameters: {
@@ -149,6 +166,12 @@ module Personas
       ).dig("choices", 0, "message", "content")
 
       JSON.parse(response)
+    end
+
+    def sanitize_text(text)
+      text
+        .encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+        .gsub("\u0000", "")
     end
   end
 end

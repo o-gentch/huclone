@@ -42,15 +42,17 @@ module Imports
     private
 
     def parse_json!
-      JSON.parse(@file.read.force_encoding("UTF-8"))
+      JSON.parse(@file.read.encode("UTF-8", invalid: :replace, undef: :replace, replace: ""))
     end
 
     def extract_text(raw)
-      case raw
-      when String then raw.strip
-      when Array  then raw.filter_map { |part| part.is_a?(Hash) ? part["text"] : part }.join.strip
+      text = case raw
+      when String then raw
+      when Array  then raw.filter_map { |part| part.is_a?(Hash) ? part["text"] : part }.join
       else ""
       end
+
+      text.gsub("\u0000", "").strip
     end
   end
 end

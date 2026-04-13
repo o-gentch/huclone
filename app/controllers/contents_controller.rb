@@ -49,10 +49,14 @@ class ContentsController < ApplicationController
   end
 
   def extract_text(content_params)
-    if content_params[:file].present?
-      content_params[:file].read.force_encoding("UTF-8")
+    raw = if content_params[:file].present?
+      content_params[:file].read
     else
-      content_params[:body].to_s.strip
+      content_params[:body].to_s
     end
+
+    raw.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+       .gsub("\u0000", "")
+       .strip
   end
 end
