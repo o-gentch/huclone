@@ -3,15 +3,16 @@ module Conversations
     def self.call(...) = new(...).call
 
     def initialize(conversation, user_message, assistant_message)
-      @conversation     = conversation
-      @persona          = conversation.persona
-      @user_message     = user_message
+      @conversation      = conversation
+      @persona           = conversation.persona
+      @user_message      = user_message
       @assistant_message = assistant_message
     end
 
     def call
-      chunks   = Ai::RagSearch.call(@persona.id, @user_message.body)
-      messages = build_messages(chunks)
+      intent = Conversations::IntentClassifier.call(@user_message.body)
+      chunks = Ai::RagSearch.call(@persona.id, @user_message.body)
+      messages = build_messages(chunks, intent)
 
       accumulated = ""
 
@@ -41,13 +42,14 @@ module Conversations
 
     private
 
-    def build_messages(chunks)
-      system_prompt = Conversations::ContextBuilder.build_system(@persona, @user_message.mode)
+    def build_messages(chunks, intent)
+      system_prompt = Conversations::ContextBuilder.build_system(@persona, @user_message.mode, intent)
+      history_limit = Conversations::IntentClassifier::HISTORY_LIMITS.fetch(intent, 6)
 
       history = @conversation.messages
         .where.not(id: [ @user_message.id, @assistant_message.id ])
         .chronological
-        .last(10)
+        .last(history_limit)
         .map { |m| { role: m.role, content: m.body } }
 
       user_content = @user_message.body

@@ -1,8 +1,15 @@
 module Conversations
   class ContextBuilder
     BASE_INSTRUCTION = <<~PROMPT.freeze
-      Ты — AI-копия автора. Отвечай от первого лица, строго в стиле автора.
-      Никогда не говори, что ты AI. Пиши так, как писал бы сам автор.
+      Ты — AI-копия автора. Говори от первого лица, думай и рассуждай как автор.
+      Никогда не говори, что ты AI. Никогда не повторяй структуру или формулировки предыдущих ответов в этом диалоге.
+
+      Формат ответа определяется запросом:
+      - Просят написать пост → пиши пост в стиле автора
+      - Просят идеи или список → отвечай списком, коротко и конкретно, не пиши сами посты
+      - Просят структурировать → заголовки и подпункты, без лирики
+      - Задают вопрос → отвечай по существу, разговорно
+      - Small talk → коротко и по-человечески
     PROMPT
 
     STRICT_INSTRUCTION = <<~PROMPT.freeze
@@ -15,13 +22,40 @@ module Conversations
       Можешь выходить за рамки загруженных текстов, но думай и пиши строго в стиле автора.
     PROMPT
 
-    def self.build_system(persona, mode)
-      new(persona, mode).build_system
+    INTENT_INSTRUCTIONS = {
+      "write_post" => <<~PROMPT,
+        ## Задача: написать пост
+        Напиши пост в полном стиле автора. Используй примеры текстов ниже как образец голоса и формата.
+      PROMPT
+      "generate_ideas" => <<~PROMPT,
+        ## Задача: идеи
+        Предложи идеи нумерованным списком под конкретный запрос (посты, курс, книга, путешествие — что бы ни спросили).
+        Для каждой идеи — одно-два предложения, конкретно и по существу.
+        Не пиши готовые тексты — только идеи. Думай в духе автора: его темы, углы, ценности.
+      PROMPT
+      "structure_knowledge" => <<~PROMPT,
+        ## Задача: структурировать знания
+        Выдели ключевые темы и подтемы из материалов автора.
+        Отвечай структурированно: заголовки, подпункты. Не пиши как пост.
+      PROMPT
+      "casual_chat" => <<~PROMPT,
+        ## Задача: диалог
+        Отвечай коротко и по-человечески, в голосе автора. Это разговор, не публикация.
+      PROMPT
+      "answer_question" => <<~PROMPT
+        ## Задача: ответить на вопрос
+        Отвечай по существу, в голосе автора. Формат — ответ, не пост.
+      PROMPT
+    }.freeze
+
+    def self.build_system(persona, mode, intent = "answer_question")
+      new(persona, mode, intent).build_system
     end
 
-    def initialize(persona, mode)
+    def initialize(persona, mode, intent = "answer_question")
       @persona = persona
-      @mode = mode
+      @mode    = mode
+      @intent  = intent
     end
 
     def build_system
@@ -29,7 +63,8 @@ module Conversations
         BASE_INSTRUCTION,
         personality_section,
         exemplars_section,
-        mode_section
+        mode_section,
+        intent_section
       ].compact.join("\n\n---\n\n")
     end
 
@@ -43,15 +78,21 @@ module Conversations
     end
 
     def exemplars_section
-      exemplars = @persona.contents.exemplars.limit(7)
+      return nil unless @intent == "write_post"
+
+      exemplars = @persona.contents.exemplars.limit(3)
       return nil if exemplars.empty?
 
       posts = exemplars.map.with_index(1) { |c, i| "### Пост #{i}\n#{c.body}" }.join("\n\n")
-      "## Примеры текстов автора\n\n#{posts}"
+      "## Примеры постов автора\n\n#{posts}"
     end
 
     def mode_section
       @mode == "strict" ? STRICT_INSTRUCTION : IDEAS_INSTRUCTION
+    end
+
+    def intent_section
+      INTENT_INSTRUCTIONS[@intent]
     end
   end
 end
