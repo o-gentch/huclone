@@ -42,7 +42,7 @@ module Imports
     private
 
     def parse_json!
-      JSON.parse(@file.read.encode("UTF-8", invalid: :replace, undef: :replace, replace: ""))
+      JSON.parse(@file.read.force_encoding("UTF-8").scrub(""))
     end
 
     def extract_text(raw)

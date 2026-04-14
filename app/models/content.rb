@@ -4,5 +4,6 @@ class Content < ApplicationRecord
 
   enum :status, { pending: "pending", processing: "processing", done: "done", failed: "failed" }
 
-  scope :exemplars, -> { where(is_exemplar: true) }
+  scope :exemplars,   -> { where(is_exemplar: true) }
+  scope :not_in_map,  -> { where(included_in_map: false) }
 end

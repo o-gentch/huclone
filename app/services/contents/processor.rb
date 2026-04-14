@@ -37,8 +37,9 @@ module Contents
 
     def sanitize_text(text)
       text
-        .encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
-        .gsub("\u0000", "")
+        .force_encoding("UTF-8")
+        .scrub("")
+        .gsub(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD]/, "")
     end
   end
 end

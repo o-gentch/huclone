@@ -8,7 +8,7 @@ default: &default
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
       polling_interval: 0.1
     - queues: "personality_map"
-      threads: 1
+      threads: 5
       processes: 1
       polling_interval: 0.5
     - queues: "chat"
