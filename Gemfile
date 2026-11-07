@@ -80,3 +80,5 @@ group :test do
 end
 
 gem "aws-sdk-s3", "~> 1.239", require: false
+
+gem "numo-narray", "~> 0.9.2", require: false

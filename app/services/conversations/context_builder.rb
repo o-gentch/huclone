@@ -73,12 +73,33 @@ module Conversations
 
     private
 
+    SPOKEN_INSTRUCTION = <<~PROMPT.freeze
+      ## Голос: устная речь
+      Отвечай так, как автор говорит вслух: используй раздел spoken_style карты (обороты, манеру объяснять, юмор)
+      и устные цитаты. Письменные штампы постов не переноси.
+    PROMPT
+
+    WRITTEN_INSTRUCTION = <<~PROMPT.freeze
+      ## Голос: письменный
+      Пиши письменным голосом автора — по его постам. Манеру устной речи (spoken_style, разговорные цитаты) не используй.
+    PROMPT
+
+    # Выбор голоса по intent: write_post — письменный, остальное — с учётом устного стиля
     def personality_section
       map = @persona.personality_map
       return nil if map.blank?
 
-      "## Карта личности автора\n#{map.to_json}"
+      map = Personas::PersonalityMapBuilder.normalize_map(map)
+      if written_voice?
+        map = map.except("spoken_style")
+        map["verbatim_examples"] = map["verbatim_examples"].select { |e| e["source"] == "post" }
+      end
+
+      voice = written_voice? ? WRITTEN_INSTRUCTION : (SPOKEN_INSTRUCTION if map["spoken_style"].present?)
+      [ "## Карта личности автора\n#{map.to_json}", voice ].compact.join("\n\n")
     end
+
+    def written_voice? = @intent == "write_post"
 
     def linguistics_section
       l = @persona.linguistics
@@ -100,7 +121,7 @@ module Conversations
     def exemplars_section
       return nil unless @intent == "write_post"
 
-      exemplars = @persona.contents.exemplars.limit(3)
+      exemplars = @persona.contents.posts.exemplars.limit(3)
       return nil if exemplars.empty?
 
       posts = exemplars.map.with_index(1) { |c, i| "### Пост #{i}\n#{c.body.truncate(EXEMPLAR_MAX_CHARS)}" }.join("\n\n")

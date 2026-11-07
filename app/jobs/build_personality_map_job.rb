@@ -9,6 +9,8 @@ class BuildPersonalityMapJob < ApplicationJob
   discard_on ActiveJob::DeserializationError
 
   def perform(persona_id)
+    # Новые завершения во время сборки поставят следующую
+    Persona.where(id: persona_id).update_all(map_build_scheduled_at: nil)
     Personas::LinguisticsAnalyzer.call(persona_id)
     Personas::PersonalityMapBuilder.call(persona_id)
   end

@@ -4,7 +4,8 @@ class ContentsController < ApplicationController
   before_action :set_persona
 
   def index
-    @contents = @persona.contents.order(created_at: :desc)
+    # Фрагменты речи принадлежат записям и управляются со страницы «Видео»
+    @contents = @persona.contents.posts.order(created_at: :desc)
   end
 
   def new

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_07_141000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_08_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -48,6 +48,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_141000) do
     t.datetime "created_at", null: false
     t.vector "embedding", limit: 1536
     t.integer "position", null: false
+    t.integer "start_ms"
     t.text "text", null: false
     t.datetime "updated_at", null: false
     t.index ["content_id", "position"], name: "index_chunks_on_content_id_and_position", unique: true
@@ -57,17 +58,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_141000) do
 
   create_table "contents", force: :cascade do |t|
     t.text "body"
+    t.text "context_text"
     t.datetime "created_at", null: false
+    t.integer "end_ms"
     t.boolean "included_in_map", default: false, null: false
     t.boolean "is_exemplar", default: false, null: false
+    t.string "kind", default: "post", null: false
     t.bigint "persona_id", null: false
+    t.text "raw_body"
+    t.bigint "recording_id"
     t.jsonb "sources", default: [], null: false
+    t.string "speaker_name"
+    t.integer "start_ms"
     t.string "status", default: "pending", null: false
+    t.text "summary"
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["is_exemplar"], name: "index_contents_on_is_exemplar"
+    t.index ["kind"], name: "index_contents_on_kind"
     t.index ["persona_id"], name: "index_contents_on_persona_id"
+    t.index ["recording_id", "start_ms", "end_ms"], name: "index_contents_on_speech_range", unique: true, where: "((kind)::text = 'speech'::text)"
+    t.index ["recording_id"], name: "index_contents_on_recording_id"
     t.index ["status"], name: "index_contents_on_status"
+    t.check_constraint "kind::text = ANY (ARRAY['post'::character varying, 'speech'::character varying]::text[])", name: "contents_kind_check"
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'done'::character varying, 'failed'::character varying]::text[])", name: "contents_status_check"
   end
 
@@ -92,6 +105,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_141000) do
   create_table "personas", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "linguistics", default: {}
+    t.datetime "map_build_scheduled_at"
     t.string "name", null: false
     t.jsonb "personality_map", default: {}
     t.datetime "personality_map_built_at"
@@ -114,6 +128,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_141000) do
     t.string "source_checksum"
     t.string "status", default: "uploaded", null: false
     t.datetime "status_changed_at"
+    t.text "summary"
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["persona_id", "source_checksum"], name: "index_recordings_on_persona_id_and_source_checksum"
@@ -184,6 +199,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_141000) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "chunks", "contents"
   add_foreign_key "contents", "personas"
+  add_foreign_key "contents", "recordings", on_delete: :cascade
   add_foreign_key "conversations", "personas"
   add_foreign_key "messages", "conversations"
   add_foreign_key "personas", "users"

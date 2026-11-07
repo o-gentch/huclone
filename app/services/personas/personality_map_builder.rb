@@ -3,6 +3,7 @@ module Personas
     class InvalidMapError < StandardError; end
 
     BATCH_SIZE = 25
+    MAX_BATCH_CHARS = 60_000 # речевые фрагменты крупнее постов — батчим по объёму текста
     INTERMEDIATE_GROUP_SIZE = 10
     MAX_CONCURRENT = 5
 
@@ -75,8 +76,7 @@ module Personas
       pool = Concurrent::FixedThreadPool.new(MAX_CONCURRENT)
       futures = []
 
-      contents.in_batches(of: BATCH_SIZE) do |batch|
-        batch_array = batch.to_a
+      self.class.size_batches(contents).each do |batch_array|
         future = Concurrent::Future.execute(executor: pool) do
           ActiveRecord::Base.connection_pool.with_connection { extract_patterns_from_batch(batch_array) }
         end
@@ -101,8 +101,32 @@ module Personas
       pool.wait_for_termination(5.minutes.to_i)
     end
 
+    # Батчи ограничены и числом материалов, и суммарным объёмом текста
+    def self.size_batches(contents, max_items: BATCH_SIZE, max_chars: MAX_BATCH_CHARS)
+      batches = [ [] ]
+      chars = 0
+      contents.each do |content|
+        size = content.style_text.to_s.length + content.context_text.to_s.length
+        if batches.last.any? && (batches.last.size >= max_items || chars + size > max_chars)
+          batches << []
+          chars = 0
+        end
+        batches.last << content
+        chars += size
+      end
+      batches.reject(&:empty?)
+    end
+
+    def format_for_extraction(content, index)
+      text = sanitize_text(content.style_text.to_s.dup)
+      return "#{index}. #{text}" unless content.speech?
+
+      question = content.context_text.present? ? "Вопрос собеседника (только контекст, его стиль не анализируй): #{content.context_text}\n" : ""
+      "#{index}. [УСТНАЯ РЕЧЬ автора]\n#{question}Ответ автора: #{text}"
+    end
+
     def extract_patterns_from_batch(contents)
-      texts = contents.map.with_index(1) { |c, i| "#{i}. #{sanitize_text(c.body)}" }.join("\n\n")
+      texts = contents.map.with_index(1) { |c, i| format_for_extraction(c, i) }.join("\n\n")
 
       @ai_client.chat(
         parameters: {
@@ -121,6 +145,9 @@ module Personas
                 - как обращается к читателю (audience relationship)
                 - как выражает эмоции (emotional range)
                 - 3–5 дословных цитат из текстов (важно: дословно, без изменений)
+                Часть материалов может быть помечена [УСТНАЯ РЕЧЬ] — это расшифровка выступлений. Для неё отдельно выдели:
+                любимые разговорные обороты, как автор объясняет сложное, юмор, реакции на аудиторию, структуру ответа
+                на вопрос, слова-паразиты. Цитаты из устной речи помечай «(речь)», из текстов — «(пост)».
                 Отвечай кратко, по пунктам, на том же языке что и тексты.
               PROMPT
             },
@@ -220,6 +247,21 @@ module Personas
       missing = REQUIRED_MAP_KEYS - map.keys
       raise InvalidMapError, "missing keys: #{missing.join(", ")}" if missing.any?
 
+      self.class.normalize_map(map)
+    end
+
+    # Обратная совместимость: старые карты хранили цитаты строками и не имели spoken_style
+    def self.normalize_map(map)
+      map = map.deep_dup
+      map["verbatim_examples"] = Array(map["verbatim_examples"]).filter_map do |ex|
+        if ex.is_a?(Hash)
+          text = ex["text"].to_s
+          { "text" => text, "source" => %w[post speech].include?(ex["source"]) ? ex["source"] : "post" } if text.present?
+        elsif ex.present?
+          { "text" => ex.to_s, "source" => "post" }
+        end
+      end
+      map["spoken_style"] = {} unless map["spoken_style"].is_a?(Hash)
       map
     end
 
@@ -245,8 +287,17 @@ module Personas
           "audience_relationship": "как обращается к читателю",
           "emotional_range": "как выражает эмоции",
           "what_never_writes_about": ["табуированная тема"],
-          "verbatim_examples": ["минимум 10 дословных цитат из текстов, без изменений"]
+          "spoken_style": {
+            "filler_habits": "слова-паразиты и как автор их использует",
+            "explanation_patterns": ["как автор объясняет сложное: примеры, аналогии, структура"],
+            "typical_phrases": ["любимые разговорные обороты"],
+            "humor": "какой юмор и как шутит",
+            "audience_interaction": "как реагирует на слушателей и вопросы"
+          },
+          "verbatim_examples": [{"text": "дословная цитата без изменений", "source": "post или speech"}]
         }
+        verbatim_examples — минимум 10 цитат; source = "speech" для цитат из устной речи, "post" для письменных.
+        Если устной речи в наблюдениях нет — spoken_style оставь пустым объектом {}; если есть — заполни.
         Только JSON, без пояснений.
       PROMPT
     end

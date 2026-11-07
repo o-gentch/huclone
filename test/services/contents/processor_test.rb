@@ -33,3 +33,27 @@ class Contents::ProcessorTest < ActiveSupport::TestCase
     assert @content.reload.pending?
   end
 end
+
+class Contents::ProcessorSpeechTest < ActiveSupport::TestCase
+  class RecordingEmbeddings
+    class << self
+      attr_reader :inputs
+      def fetch_many(texts)
+        @inputs = texts
+        texts.map { Array.new(1536) { 0.1 } }
+      end
+    end
+  end
+
+  test "speech chunks get timecodes and the question is embedded but not stored" do
+    persona = users(:one).personas.create!(name: "T")
+    content = persona.contents.create!(kind: "speech", title: "s", status: "pending", sources: [], start_ms: 5_000, end_ms: 65_000,
+                                       context_text: "Как начинать?", body: "Начинать нужно с малого. Потом растить.")
+    Contents::Processor.new(content.id, embeddings: RecordingEmbeddings).call
+
+    chunk = content.chunks.first
+    assert_equal 5_000, chunk.start_ms
+    assert_not_includes chunk.text, "Как начинать"
+    assert_match(/Вопрос: Как начинать\?/, RecordingEmbeddings.inputs.first)
+  end
+end
