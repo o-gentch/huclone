@@ -1,6 +1,6 @@
 class PersonasController < ApplicationController
   def index
-    persona = Persona.first
+    persona = Current.user.personas.order(:id).first
     if persona
       redirect_to persona_contents_path(persona)
     else
@@ -13,7 +13,7 @@ class PersonasController < ApplicationController
   end
 
   def create
-    @persona = Persona.new(persona_params)
+    @persona = Current.user.personas.new(persona_params)
     if @persona.save
       redirect_to persona_contents_path(@persona)
     else

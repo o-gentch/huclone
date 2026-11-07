@@ -17,7 +17,16 @@ bin/dev
 | Переменная | Назначение |
 |---|---|
 | `OPENAI_ACCESS_TOKEN` | ключ OpenAI (либо `credentials.openai.access_token`) |
-| `APP_USERNAME` / `APP_PASSWORD` | HTTP Basic для всего приложения и `/jobs`. В production без них доступ закрыт (403); в development/test открыт |
+
+## Пользователи
+
+Аутентификация — Rails authentication (сессии в cookie). Публичной регистрации нет, пользователь создаётся командой:
+
+```bash
+bin/rails "users:create[you@example.com,пароль]"
+```
+
+Команда также привязывает к новому пользователю персоны без владельца (остались от версии без аккаунтов). Панель `/jobs` доступна любому вошедшему пользователю.
 
 ## Пайплайн
 

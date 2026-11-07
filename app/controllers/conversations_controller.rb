@@ -21,6 +21,6 @@ class ConversationsController < ApplicationController
   private
 
   def set_persona
-    @persona = Persona.find(params[:persona_id])
+    @persona = Current.user.personas.find(params[:persona_id])
   end
 end

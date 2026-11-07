@@ -25,7 +25,7 @@ class MessagesController < ApplicationController
   private
 
   def set_conversation
-    @persona      = Persona.find(params[:persona_id])
+    @persona      = Current.user.personas.find(params[:persona_id])
     @conversation = @persona.conversations.find(params[:conversation_id])
   end
 end

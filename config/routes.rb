@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resource :session
   get "up" => "rails/health#show", as: :rails_health_check
   resources :personas, only: [ :new, :create ] do
     resources :contents, only: [ :index, :new, :create, :destroy ]
