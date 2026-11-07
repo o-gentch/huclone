@@ -11,10 +11,13 @@ div id="message_form"
           label class="cursor-pointer"
             = f.radio_button :mode, m, checked: (mode == m), class: "sr-only peer", id: "mode_#{m}"
             span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors peer-checked:bg-gray-900 peer-checked:text-white peer-checked:border-gray-900 border-gray-200 text-gray-500 hover:border-gray-300"
-              - if m == "strict"
+              - case m
+              - when "strict"
                 | 🔒 По материалам
-              - else
+              - when "ideas"
                 | 💡 Идеи
+              - else
+                | 📖 Книга
 
       / Textarea
       = f.text_area :body,

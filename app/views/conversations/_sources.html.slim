@@ -1,0 +1,10 @@
+- if message.sources.present?
+  .mt-3.pt-2.border-t.border-gray-100.text-xs.text-gray-500
+    p class="font-medium text-gray-400 mb-1" Источники
+    ul.space-y-0.5
+      - message.sources.each do |s|
+        li
+          - if s["recording_id"]
+            = link_to s["label"], persona_recording_path(persona, s["recording_id"], anchor: ("t=#{s['start_ms'] / 1000}" if s["start_ms"])), class: "hover:text-gray-900 underline decoration-gray-300"
+          - else
+            = s["label"]

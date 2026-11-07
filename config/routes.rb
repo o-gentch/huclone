@@ -11,6 +11,12 @@ Rails.application.routes.draw do
         get :audio
       end
     end
+    resources :topics, only: [ :index ] do
+      collection do
+        get :export
+        post :rebuild
+      end
+    end
     resources :telegram_imports, only: [ :new, :create ]
     resources :conversations, only: [ :index, :new, :create, :show ] do
       resources :messages, only: [ :create ]

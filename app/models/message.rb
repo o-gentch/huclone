@@ -2,7 +2,7 @@ class Message < ApplicationRecord
   belongs_to :conversation
 
   ROLES = %w[user assistant].freeze
-  MODES = %w[strict ideas].freeze
+  MODES = %w[strict ideas book].freeze
 
   validates :role, inclusion: { in: ROLES }
   validates :mode, inclusion: { in: MODES }

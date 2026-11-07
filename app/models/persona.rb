@@ -3,6 +3,7 @@ class Persona < ApplicationRecord
   has_many :contents, dependent: :destroy
   has_many :conversations, dependent: :destroy
   has_many :recordings, dependent: :destroy
+  has_many :topics, dependent: :delete_all
 
   validates :name, presence: true
 

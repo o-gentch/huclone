@@ -1,13 +1,14 @@
 module Conversations
   class IntentClassifier
-    INTENTS = %w[write_post generate_ideas structure_knowledge casual_chat answer_question].freeze
+    INTENTS = %w[write_post generate_ideas structure_knowledge casual_chat answer_question book].freeze
 
     HISTORY_LIMITS = {
       "write_post"          => 2,
       "generate_ideas"      => 4,
       "structure_knowledge" => 8,
       "answer_question"     => 8,
-      "casual_chat"         => 6
+      "casual_chat"         => 6,
+      "book"                => 6
     }.freeze
 
     def self.call(message_body) = new(message_body).call
@@ -29,6 +30,7 @@ module Conversations
                 write_post           — просит написать пост, текст, публикацию, историю
                 generate_ideas       — просит идеи, темы, варианты для чего угодно (посты, курс, книга, путешествие и т.д.)
                 structure_knowledge  — просит структурировать, систематизировать, оглавление, mind map
+                book                 — просит оглавление книги, главы, структуру книги или курса по выступлениям/видео
                 casual_chat          — приветствие, small talk, личные вопросы ("как дела", "расскажи о себе")
                 answer_question      — любой другой вопрос, анализ, объяснение
 

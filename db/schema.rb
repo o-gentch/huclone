@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -97,6 +97,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_100000) do
     t.datetime "created_at", null: false
     t.string "mode", default: "strict", null: false
     t.string "role", null: false
+    t.jsonb "sources", default: [], null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id", "created_at"], name: "index_messages_on_conversation_id_and_created_at"
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
@@ -159,6 +160,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_100000) do
     t.index ["recording_id"], name: "index_speakers_on_recording_id"
   end
 
+  create_table "topic_chunks", force: :cascade do |t|
+    t.bigint "chunk_id", null: false
+    t.bigint "topic_id", null: false
+    t.index ["chunk_id"], name: "index_topic_chunks_on_chunk_id"
+    t.index ["topic_id", "chunk_id"], name: "index_topic_chunks_on_topic_id_and_chunk_id", unique: true
+    t.index ["topic_id"], name: "index_topic_chunks_on_topic_id"
+  end
+
+  create_table "topics", force: :cascade do |t|
+    t.vector "centroid", limit: 1536
+    t.datetime "created_at", null: false
+    t.integer "depth", default: 0, null: false
+    t.bigint "parent_id"
+    t.bigint "persona_id", null: false
+    t.integer "position", default: 0, null: false
+    t.string "slug", null: false
+    t.text "summary"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["parent_id"], name: "index_topics_on_parent_id"
+    t.index ["persona_id", "slug"], name: "index_topics_on_persona_id_and_slug", unique: true
+    t.index ["persona_id"], name: "index_topics_on_persona_id"
+  end
+
   create_table "usage_events", force: :cascade do |t|
     t.float "cost_usd", default: 0.0, null: false
     t.datetime "created_at", null: false
@@ -206,6 +231,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_100000) do
   add_foreign_key "recordings", "personas", on_delete: :cascade
   add_foreign_key "sessions", "users"
   add_foreign_key "speakers", "recordings", on_delete: :cascade
+  add_foreign_key "topic_chunks", "chunks", on_delete: :cascade
+  add_foreign_key "topic_chunks", "topics", on_delete: :cascade
+  add_foreign_key "topics", "personas", on_delete: :cascade
+  add_foreign_key "topics", "topics", column: "parent_id", on_delete: :cascade
   add_foreign_key "usage_events", "recordings", on_delete: :nullify
   add_foreign_key "usage_events", "users", on_delete: :cascade
   add_foreign_key "utterances", "recordings", on_delete: :cascade
