@@ -9,7 +9,8 @@ module Personas
     end
 
     def call
-      done = @persona.contents.done
+      # Эталоны — только письменные тексты: по ним выбирается письменный голос
+      done = @persona.contents.posts.done
       return unless done.exists?
 
       # Самые длинные материалы (по длине текста) — без загрузки записей и чанков

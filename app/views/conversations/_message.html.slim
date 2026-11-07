@@ -11,3 +11,5 @@ div id=dom_id(message) class="flex #{'justify-end' if user_message}"
           span class="inline-block w-1 h-4 bg-gray-300 animate-pulse rounded-sm align-middle"
         - else
           = simple_format message.body, {}, wrapper_tag: "span"
+      div id="message_#{message.id}_sources"
+        = render "conversations/sources", message: message, persona: message.conversation.persona

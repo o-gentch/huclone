@@ -12,13 +12,14 @@ module Personas
     end
 
     def call
-      contents = Content
-        .where(persona_id: @persona.id, status: "done")
-        .order(:id)
+      done = Content.where(persona_id: @persona.id, status: "done").order(:id)
+      posts    = done.posts.to_a
+      speeches = done.speeches.to_a
+      return if posts.empty? && speeches.empty?
 
-      return if contents.empty?
-
-      linguistics = analyze(contents.to_a)
+      # Письменные метрики — только по постам; устные считаются отдельным блоком
+      linguistics = posts.any? ? analyze(posts) : {}
+      linguistics["spoken"] = analyze_spoken(speeches) if speeches.any?
 
       @persona.update!(linguistics: linguistics)
     end
@@ -59,6 +60,27 @@ module Personas
         question_pct:            sentences.empty? ? 0 : (all_text.count("?").to_f / sentences.size * 100).round,
         ellipsis_pct:            sentences.empty? ? 0 : (all_text.scan(/\.{3}|…/).size.to_f / sentences.size * 100).round
       }
+    end
+
+    FILLERS = [ "ну", "вот", "типа", "как бы", "значит", "в общем", "короче", "так сказать", "э-э", "эм" ].freeze
+
+    def analyze_spoken(speeches)
+      texts = speeches.map(&:style_text)
+      all_text = texts.join(" ")
+      words = all_text.downcase.scan(/[а-яёa-z]+/)
+      sentences = all_text.split(/[.!?…]+/).map(&:strip).reject(&:empty?)
+      lengths = sentences.map { |s| s.split.size }
+      lowered = " #{all_text.downcase.gsub(/[^[:alnum:]\s-]/, ' ')} "
+      fillers = FILLERS.sum { |f| lowered.scan(" #{f} ").size }
+
+      {
+        answers_count:        speeches.size,
+        avg_answer_words:     (texts.sum { |t| t.split.size }.to_f / texts.size).round,
+        avg_sentence_words:   lengths.empty? ? 0 : (lengths.sum.to_f / lengths.size).round(1),
+        question_pct:         sentences.empty? ? 0 : (all_text.count("?").to_f / sentences.size * 100).round,
+        fillers_per_100_words: words.empty? ? 0 : (fillers.to_f / words.size * 100).round(1),
+        total_words:          words.size
+      }.stringify_keys
     end
 
     def classify_emoji_usage(text)

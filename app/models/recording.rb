@@ -14,6 +14,7 @@ class Recording < ApplicationRecord
   has_many :utterances, -> { order(:position) }, dependent: :delete_all
   has_many :speakers, -> { order(:label) }, dependent: :delete_all
   has_many :usage_events, dependent: :nullify
+  has_many :contents, dependent: :destroy
 
   has_one_attached :source_file, dependent: :purge_later
   has_one_attached :audio_file, dependent: :purge_later

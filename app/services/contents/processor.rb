@@ -1,5 +1,7 @@
 module Contents
   class Processor
+    MAX_QUESTION_CHARS = 300
+
     def self.call(...) = new(...).call
 
     def initialize(content_id, embeddings: ::Ai::Embeddings)
@@ -12,15 +14,16 @@ module Contents
 
       @content.update!(status: "processing")
 
-      texts = Contents::Chunker.chunk(sanitize_text(@content.body))
-      vectors = @embeddings.fetch_many(texts)
+      pieces = build_pieces(sanitize_text(@content.body))
+      # Для речи вопрос включается в эмбеддинг: ответ находится по формулировке вопроса
+      vectors = @embeddings.fetch_many(pieces.map { |p| embedding_input(p[:text]) })
       now = Time.current
 
       # Пересоздаём чанки атомарно: ретраи не плодят дубликаты
       ::Content.transaction do
         @content.chunks.delete_all
-        rows = texts.each_with_index.map do |text, position|
-          { content_id: @content.id, text: text, position: position,
+        rows = pieces.each_with_index.map do |piece, position|
+          { content_id: @content.id, text: piece[:text], position: position, start_ms: piece[:start_ms],
             embedding: vectors[position], created_at: now, updated_at: now }
         end
         ::Chunk.insert_all!(rows) if rows.any?
@@ -36,6 +39,20 @@ module Contents
     end
 
     private
+
+    def build_pieces(text)
+      if @content.speech?
+        Contents::Chunker.chunk_speech(text, start_ms: @content.start_ms.to_i, end_ms: @content.end_ms.to_i)
+      else
+        Contents::Chunker.chunk(text).map { |t| { text: t, start_ms: nil } }
+      end
+    end
+
+    def embedding_input(text)
+      return text unless @content.speech? && @content.context_text.present?
+
+      "Вопрос: #{@content.context_text.truncate(MAX_QUESTION_CHARS)}\nОтвет: #{text}"
+    end
 
     def sanitize_text(text)
       text
