@@ -1,24 +1,34 @@
-# README
+# Huclone
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+AI-клон автора: загружаете свои тексты (вручную или экспортом Telegram-канала), система строит «карту личности» и количественный профиль стиля, а чат отвечает от первого лица в голосе автора, опираясь на ваши материалы (RAG).
 
-Things you may want to cover:
+Стек: Rails 8.1, PostgreSQL + pgvector, Solid Queue/Cable/Cache, Hotwire, Tailwind, OpenAI API.
 
-* Ruby version
+## Запуск
 
-* System dependencies
+```bash
+bundle install
+bin/rails db:prepare   # нужен PostgreSQL с расширением pgvector
+bin/dev
+```
 
-* Configuration
+## Конфигурация
 
-* Database creation
+| Переменная | Назначение |
+|---|---|
+| `OPENAI_ACCESS_TOKEN` | ключ OpenAI (либо `credentials.openai.access_token`) |
+| `APP_USERNAME` / `APP_PASSWORD` | HTTP Basic для всего приложения и `/jobs`. В production без них доступ закрыт (403); в development/test открыт |
 
-* Database initialization
+## Пайплайн
 
-* How to run the test suite
+1. Текст → `ProcessContentJob` → чанки (1500 симв.) → эмбеддинги батчем → `chunks` (HNSW-индекс).
+2. Когда все материалы персоны обработаны → `BuildPersonalityMapJob`: лингвистика + map-reduce карта личности (инкрементальная).
+3. Сообщение в чат → `ChatResponseJob`: intent + RAG параллельно → gpt-4o со стримингом через Turbo Streams.
 
-* Services (job queues, cache servers, search engines, etc.)
+Аудит и известные ограничения: [AUDIT.md](AUDIT.md).
 
-* Deployment instructions
+## Тесты
 
-* ...
+```bash
+bin/rails test
+```

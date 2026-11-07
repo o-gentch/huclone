@@ -5,6 +5,7 @@ class BuildPersonalityMapJob < ApplicationJob
 
   retry_on OpenAI::Error, wait: :polynomially_longer, attempts: 5
   retry_on Faraday::TooManyRequestsError, wait: :polynomially_longer, attempts: 5
+  retry_on Personas::PersonalityMapBuilder::InvalidMapError, JSON::ParserError, wait: 10.seconds, attempts: 3
   discard_on ActiveJob::DeserializationError
 
   def perform(persona_id)

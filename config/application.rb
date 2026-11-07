@@ -35,5 +35,9 @@ module Huclone
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Mission Control наследуется от ApplicationController и использует его аутентификацию
+    config.mission_control.jobs.http_basic_auth_enabled = false
+    config.mission_control.jobs.base_controller_class = "ApplicationController"
   end
 end

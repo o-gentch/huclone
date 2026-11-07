@@ -12,18 +12,20 @@ module Contents
 
       @content.update!(status: "processing")
 
-      body = sanitize_text(@content.body)
-      chunks = Contents::Chunker.chunk(body)
-      chunks.each_with_index do |text, position|
-        @content.chunks.create!(
-          text: text,
-          position: position,
-          embedding: @embeddings.fetch(text)
-        )
-        sleep(0.1) unless position == chunks.size - 1
-      end
+      texts = Contents::Chunker.chunk(sanitize_text(@content.body))
+      vectors = @embeddings.fetch_many(texts)
+      now = Time.current
 
-      @content.update!(status: "done")
+      # Пересоздаём чанки атомарно: ретраи не плодят дубликаты
+      ::Content.transaction do
+        @content.chunks.delete_all
+        rows = texts.each_with_index.map do |text, position|
+          { content_id: @content.id, text: text, position: position,
+            embedding: vectors[position], created_at: now, updated_at: now }
+        end
+        ::Chunk.insert_all!(rows) if rows.any?
+        @content.update!(status: "done")
+      end
     rescue => e
       @content&.update!(status: "pending")
       raise
@@ -37,9 +39,10 @@ module Contents
 
     def sanitize_text(text)
       text
+        .dup
         .force_encoding("UTF-8")
         .scrub("")
-        .gsub(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD]/, "")
+        .gsub(/[^\u0009\u000A\u000D -퟿-�]/, "")
     end
   end
 end

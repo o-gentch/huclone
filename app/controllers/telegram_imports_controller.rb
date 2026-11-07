@@ -1,4 +1,6 @@
 class TelegramImportsController < ApplicationController
+  MAX_FILE_BYTES = 50.megabytes
+
   before_action :set_persona
 
   def new
@@ -9,6 +11,12 @@ class TelegramImportsController < ApplicationController
 
     if file.blank?
       flash.now[:error] = "Файл не выбран"
+      render :new, status: :unprocessable_entity
+      return
+    end
+
+    if file.size > MAX_FILE_BYTES
+      flash.now[:error] = "Файл слишком большой (максимум #{MAX_FILE_BYTES / 1.megabyte} МБ)"
       render :new, status: :unprocessable_entity
       return
     end

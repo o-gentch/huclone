@@ -1,5 +1,7 @@
 module Personas
   class PersonalityMapBuilder
+    class InvalidMapError < StandardError; end
+
     BATCH_SIZE = 25
     INTERMEDIATE_GROUP_SIZE = 10
     MAX_CONCURRENT = 5
@@ -28,7 +30,7 @@ module Personas
     private
 
     def full_build(contents)
-      observations = extract_observations_in_parallel(contents)
+      observations, covered_ids = extract_observations_in_parallel(contents)
       return if observations.empty?
 
       intermediate = collapse_intermediates(observations)
@@ -38,13 +40,13 @@ module Personas
         personality_map: personality_map,
         personality_map_built_at: Time.current
       )
-      contents.update_all(included_in_map: true)
+      Content.where(id: covered_ids).update_all(included_in_map: true)
 
       Personas::ExemplarSelector.call(@persona)
     end
 
     def delta_build(new_contents)
-      new_observations = extract_observations_in_parallel(new_contents)
+      new_observations, covered_ids = extract_observations_in_parallel(new_contents)
       return if new_observations.empty?
 
       intermediate = collapse_intermediates(new_observations)
@@ -54,7 +56,7 @@ module Personas
         personality_map: personality_map,
         personality_map_built_at: Time.current
       )
-      new_contents.update_all(included_in_map: true)
+      Content.where(id: covered_ids).update_all(included_in_map: true)
 
       Personas::ExemplarSelector.call(@persona)
     end
@@ -67,22 +69,33 @@ module Personas
       end.compact
     end
 
+    # Возвращает [observations, covered_content_ids]; упавшие батчи не попадают
+    # в covered_ids и будут обработаны при следующей сборке.
     def extract_observations_in_parallel(contents)
       pool = Concurrent::FixedThreadPool.new(MAX_CONCURRENT)
       futures = []
 
       contents.in_batches(of: BATCH_SIZE) do |batch|
         batch_array = batch.to_a
-        futures << Concurrent::Future.execute(executor: pool) do
-          extract_patterns_from_batch(batch_array)
+        future = Concurrent::Future.execute(executor: pool) do
+          ActiveRecord::Base.connection_pool.with_connection { extract_patterns_from_batch(batch_array) }
+        end
+        futures << [ batch_array.map(&:id), future ]
+      end
+
+      observations = []
+      covered_ids  = []
+      futures.each do |ids, future|
+        result = future.value
+        if future.rejected? || result.blank?
+          Rails.logger.error("[PersonalityMapBuilder] batch failed: #{future.reason}")
+        else
+          observations << result
+          covered_ids.concat(ids)
         end
       end
 
-      futures.filter_map do |f|
-        result = f.value
-        Rails.logger.error("[PersonalityMapBuilder] batch failed: #{f.reason}") if f.rejected?
-        result
-      end
+      [ observations, covered_ids ]
     ensure
       pool.shutdown
       pool.wait_for_termination(5.minutes.to_i)
@@ -160,7 +173,7 @@ module Personas
         }
       ).dig("choices", 0, "message", "content")
 
-      JSON.parse(response)
+      parse_map!(response)
     end
 
     # Merges an existing personality_map with observations from newly added content.
@@ -197,7 +210,17 @@ module Personas
         }
       ).dig("choices", 0, "message", "content")
 
-      JSON.parse(response)
+      parse_map!(response)
+    end
+
+    REQUIRED_MAP_KEYS = %w[core_beliefs main_topics speech_style verbatim_examples].freeze
+
+    def parse_map!(response)
+      map = JSON.parse(response)
+      missing = REQUIRED_MAP_KEYS - map.keys
+      raise InvalidMapError, "missing keys: #{missing.join(", ")}" if missing.any?
+
+      map
     end
 
     def personality_map_schema_prompt

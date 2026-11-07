@@ -22,6 +22,8 @@ module Conversations
       Можешь выходить за рамки загруженных текстов, но думай и пиши строго в стиле автора.
     PROMPT
 
+    EXEMPLAR_MAX_CHARS = 3_000
+
     INTENT_INSTRUCTIONS = {
       "write_post" => <<~PROMPT,
         ## Задача: написать пост
@@ -62,6 +64,7 @@ module Conversations
       [
         BASE_INSTRUCTION,
         personality_section,
+        linguistics_section,
         exemplars_section,
         mode_section,
         intent_section
@@ -77,13 +80,30 @@ module Conversations
       "## Карта личности автора\n#{map.to_json}"
     end
 
+    def linguistics_section
+      l = @persona.linguistics
+      return nil if l.blank?
+
+      top = (l["top_words"] || {}).keys.first(20).join(", ")
+      lines = [
+        "Средняя длина предложения: #{l["avg_sentence_words"]} слов (медиана #{l["median_sentence_words"]})",
+        "Короткие предложения (<8 слов): #{l["short_sentences_pct"]}%, длинные (>20): #{l["long_sentences_pct"]}%",
+        "Средняя длина поста: #{l["avg_post_words"]} слов, абзацев в посте: #{l["avg_paragraphs_per_post"]}",
+        "Эмодзи: #{l["emoji_usage"]}",
+        "Восклицаний на 100 предложений: #{l["exclamation_pct"]}, вопросов: #{l["question_pct"]}, многоточий: #{l["ellipsis_pct"]}",
+        ("Частые слова: #{top}" if top.present?)
+      ].compact
+
+      "## Количественные характеристики стиля\n#{lines.join("\n")}"
+    end
+
     def exemplars_section
       return nil unless @intent == "write_post"
 
       exemplars = @persona.contents.exemplars.limit(3)
       return nil if exemplars.empty?
 
-      posts = exemplars.map.with_index(1) { |c, i| "### Пост #{i}\n#{c.body}" }.join("\n\n")
+      posts = exemplars.map.with_index(1) { |c, i| "### Пост #{i}\n#{c.body.truncate(EXEMPLAR_MAX_CHARS)}" }.join("\n\n")
       "## Примеры постов автора\n\n#{posts}"
     end
 

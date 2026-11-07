@@ -1,6 +1,7 @@
 module Imports
   class Telegram
     MIN_TEXT_LENGTH = 100
+    MAX_IMPORT      = 5_000
 
     def self.call(persona:, file:) = new(persona:, file:).call
 
@@ -16,13 +17,16 @@ module Imports
 
       imported = 0
       skipped  = 0
+      existing_bodies = @persona.contents.pluck(:body).to_set
 
       messages.each do |msg|
+        break if imported >= MAX_IMPORT
         next unless msg["type"] == "message"
 
         text = extract_text(msg["text"])
         next if text.length < MIN_TEXT_LENGTH
         next unless Filters.content_post?(text)
+        next if existing_bodies.include?(text)
 
         content = @persona.contents.create!(
           title:   Contents::TitleBuilder.build(text),
@@ -31,8 +35,9 @@ module Imports
           status:  "pending"
         )
         ProcessContentJob.perform_later(content.id)
+        existing_bodies << text
         imported += 1
-      rescue StandardError
+      rescue ActiveRecord::ActiveRecordError
         skipped += 1
       end
 

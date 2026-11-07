@@ -18,7 +18,13 @@ module Contents
         end
 
         chunks << chunk unless chunk.strip.empty?
+        break if finish >= text.length
+
         start = [ finish - CHUNK_OVERLAP, start + 1 ].max
+        # Следующий чанк не должен начинаться посреди слова
+        if start > 0 && text[start - 1] !~ /\s/ && (shift = text[start...finish].index(/\s/))
+          start += shift + 1
+        end
       end
 
       chunks

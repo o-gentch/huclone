@@ -1,4 +1,6 @@
 class ContentsController < ApplicationController
+  MAX_BODY_BYTES = 1.megabyte
+
   before_action :set_persona
 
   def index
@@ -11,6 +13,13 @@ class ContentsController < ApplicationController
 
   def create
     text = extract_text(params[:content])
+    if text.bytesize > MAX_BODY_BYTES
+      @content = @persona.contents.new(title: params[:content][:title], body: nil)
+      @content.errors.add(:body, "слишком большой (максимум #{MAX_BODY_BYTES / 1.megabyte} МБ)")
+      render :new, status: :unprocessable_entity
+      return
+    end
+
     @content = @persona.contents.new(
       title:   params[:content][:title].presence || Contents::TitleBuilder.build(text),
       body:    text,
@@ -25,8 +34,8 @@ class ContentsController < ApplicationController
     end
 
     if @content.save
+      # Карта пересобирается из ProcessContentJob после завершения обработки
       ProcessContentJob.perform_later(@content.id)
-      BuildPersonalityMapJob.perform_later(@persona.id)
       if params[:add_more]
         redirect_to new_persona_content_path(@persona), notice: "Сохранено. Добавьте следующий текст."
       else
@@ -50,7 +59,9 @@ class ContentsController < ApplicationController
 
   def extract_text(content_params)
     raw = if content_params[:file].present?
-      content_params[:file].read
+      file = content_params[:file]
+      return "" if file.size > MAX_BODY_BYTES * 2
+      file.read(MAX_BODY_BYTES * 2 + 1)
     else
       content_params[:body].to_s
     end

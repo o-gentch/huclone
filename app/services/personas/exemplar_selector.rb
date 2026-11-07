@@ -9,13 +9,11 @@ module Personas
     end
 
     def call
-      done_contents = @persona.contents.done.includes(:chunks)
-      return if done_contents.empty?
+      done = @persona.contents.done
+      return unless done.exists?
 
-      exemplar_ids = done_contents
-        .sort_by { |c| -c.chunks.size }
-        .first(MAX_EXEMPLARS)
-        .map(&:id)
+      # Самые длинные материалы (по длине текста) — без загрузки записей и чанков
+      exemplar_ids = done.order(Arel.sql("char_length(body) DESC")).limit(MAX_EXEMPLARS).pluck(:id)
 
       @persona.contents.where(is_exemplar: true).where.not(id: exemplar_ids).update_all(is_exemplar: false)
       @persona.contents.where(id: exemplar_ids).update_all(is_exemplar: true)

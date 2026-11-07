@@ -1,6 +1,19 @@
 module Conversations
   class ChatResponder
+    BROADCAST_INTERVAL = 0.08
+
+    ERROR_TEXT = "Произошла ошибка. Попробуйте ещё раз.".freeze
+
     def self.call(...) = new(...).call
+
+    def self.show_error_for(assistant_message)
+      assistant_message.update!(body: ERROR_TEXT)
+      Turbo::StreamsChannel.broadcast_update_to(
+        assistant_message.conversation,
+        target: "message_#{assistant_message.id}_body",
+        html: "<p class=\"mb-2 last:mb-0\">#{ERROR_TEXT}</p>"
+      )
+    end
 
     def initialize(conversation, user_message, assistant_message)
       @conversation      = conversation
@@ -10,11 +23,14 @@ module Conversations
     end
 
     def call
-      intent = Conversations::IntentClassifier.call(@user_message.body)
-      chunks = Ai::RagSearch.call(@persona.id, @user_message.body)
+      # Классификация и поиск по эмбеддингам независимы — запускаем параллельно
+      intent_thread = Thread.new { Conversations::IntentClassifier.call(@user_message.body) }
+      chunks = Ai::RagSearch.call(@persona.id, @user_message.body).to_a
+      intent = intent_thread.value
       messages = build_messages(chunks, intent)
 
       accumulated = ""
+      last_broadcast = 0.0
 
       Ai::Client.instance.chat(
         parameters: {
@@ -26,18 +42,25 @@ module Conversations
             next unless delta
 
             accumulated += delta
-            broadcast(accumulated, streaming: true)
+
+            # Не чаще раза в BROADCAST_INTERVAL, иначе каждый токен = запись в Solid Cable
+            now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            if now - last_broadcast >= BROADCAST_INTERVAL
+              broadcast(accumulated, streaming: true)
+              last_broadcast = now
+            end
           end
         }
       )
 
       @assistant_message.update!(body: accumulated)
       broadcast(accumulated, streaming: false)
-    rescue => e
-      error_text = "Произошла ошибка. Попробуйте ещё раз."
-      @assistant_message.update!(body: error_text)
-      broadcast(error_text, streaming: false)
+    rescue OpenAI::Error, Faraday::Error
+      # Временный сбой API — отдаём управление ретраю джоба, UI остаётся в состоянии «печатает»
       raise
+    rescue => e
+      Rails.logger.error("[ChatResponder] #{e.class}: #{e.message}")
+      self.class.show_error_for(@assistant_message)
     end
 
     private
