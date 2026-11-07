@@ -1,0 +1,41 @@
+= content_for :title, @recording.title
+= turbo_stream_from @recording, :page
+
+.w-full.max-w-3xl.mx-auto
+  = link_to "← Все записи", persona_recordings_path(@persona), class: "text-sm text-gray-400 hover:text-gray-600 transition-colors"
+  .flex.items-start.justify-between.mt-3.mb-6
+    .min-w-0
+      h1 class="text-2xl font-semibold text-gray-900 truncate" = @recording.title
+      p class="text-sm text-gray-400 mt-1" #{@recording.created_at.strftime('%d.%m.%Y')} · #{@recording.duration_label}
+    = status_badge(@recording.status)
+
+  - if @recording.in_progress?
+    .bg-white.border.border-gray-200.rounded-xl.px-5.py-6.text-sm.text-gray-600
+      p
+        - case @recording.status
+        - when "uploaded", "extracting_audio"
+          | Извлекаем звук из файла…
+        - else
+          | Расшифровываем запись. Для 20-минутного видео это занимает несколько минут — страница обновится сама.
+
+  - if @recording.failed?
+    .bg-red-50.border.border-red-200.rounded-xl.px-5.py-4.text-sm.text-red-700
+      p = @recording.error_message.presence || "Не удалось обработать запись"
+      - if @recording.retryable?
+        = button_to "Повторить", retry_persona_recording_path(@persona, @recording),
+            class: "mt-3 text-sm font-medium px-4 py-2 rounded-lg bg-white border border-red-200 text-red-700 hover:bg-red-50 cursor-pointer"
+
+  - if @recording.audio_file.attached? && @speakers.any?
+    div data-controller="audio-player"
+      audio controls=true preload="metadata" class="w-full mb-6" data-audio-player-target="audio" data-action="timeupdate->audio-player#tick" src=audio_persona_recording_path(@persona, @recording)
+
+      - if @recording.awaiting_speaker_confirmation?
+        = render "recordings/confirmation", recording: @recording, persona: @persona, speakers: @speakers
+      - elsif @recording.confirmed?
+        .bg-green-50.border.border-green-200.text-green-700.text-sm.rounded-xl.px-4.py-3.mb-6
+          - if (me = @speakers.find(&:is_persona))
+            | Ваш голос: #{me.name}
+          - else
+            | Вас нет в этой записи — она не будет использована.
+
+      = render "recordings/transcript", utterances: @utterances, speakers: @speakers

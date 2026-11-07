@@ -1,0 +1,10 @@
+h2 class="text-lg font-semibold text-gray-900 mb-3" Расшифровка
+- by_id = speakers.index_by(&:id)
+.space-y-3.mb-10
+  - utterances.each do |u|
+    - speaker = by_id[u.speaker_id]
+    .flex.gap-3.text-sm
+      span class="shrink-0 w-12 text-xs text-gray-400 pt-1 tabular-nums" = u.timecode
+      div
+        span class="text-xs font-medium rounded-full px-2 py-0.5 #{speaker_color(speaker)}" = speaker.name
+        p class="mt-1 text-gray-800 leading-relaxed" = u.text

@@ -11,6 +11,14 @@ default: &default
       threads: 5
       processes: 1
       polling_interval: 0.5
+    - queues: "media"
+      threads: 2
+      processes: 1 # ffmpeg: один процесс, чтобы не съесть CPU и диск
+      polling_interval: 1
+    - queues: "transcription"
+      threads: 3
+      processes: 1
+      polling_interval: 1
     - queues: "chat"
       threads: 5
       processes: 1

@@ -1,0 +1,19 @@
+.flex.items-center.justify-between.bg-white.border.border-gray-200.rounded-xl.px-5.py-4 id=dom_id(recording)
+  = link_to persona_recording_path(persona, recording), class: "min-w-0 flex-1" do
+    p class="font-medium text-gray-900 truncate" = recording.title
+    p class="text-xs text-gray-400 mt-0.5"
+      = recording.created_at.strftime("%d.%m.%Y")
+      - if recording.duration_ms
+        |  · #{recording.duration_label}
+    - if recording.failed? && recording.error_message.present?
+      p class="text-xs text-red-500 mt-1 truncate" = recording.error_message
+  .flex.items-center.gap-3.ml-4
+    = status_badge(recording.status)
+    - if recording.failed? && recording.retryable?
+      = button_to "Повторить", retry_persona_recording_path(persona, recording),
+          class: "text-xs font-medium px-3 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer"
+    = button_to persona_recording_path(persona, recording), method: :delete,
+        data: { turbo_confirm: "Удалить запись «#{recording.title}»?" },
+        class: "text-gray-300 hover:text-red-400 transition-colors p-1 cursor-pointer" do
+      svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"
