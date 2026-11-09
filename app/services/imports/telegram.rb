@@ -5,8 +5,10 @@ module Imports
 
     def self.call(persona:, file:) = new(persona:, file:).call
 
+    # Посты кладутся в библиотеку пользователя и подключаются к DD
     def initialize(persona:, file:)
       @persona = persona
+      @user = persona.user
       @file = file
     end
 
@@ -17,7 +19,7 @@ module Imports
 
       imported = 0
       skipped  = 0
-      existing_bodies = @persona.contents.pluck(:body).to_set
+      existing = @user.contents.posts.pluck(:body, :id).to_h
 
       messages.each do |msg|
         break if imported >= MAX_IMPORT
@@ -26,16 +28,20 @@ module Imports
         text = extract_text(msg["text"])
         next if text.length < MIN_TEXT_LENGTH
         next unless Filters.content_post?(text)
-        next if existing_bodies.include?(text)
+        if (existing_id = existing[text])
+          Contents::Connect.call(@persona, Content.find(existing_id))
+          next
+        end
 
-        content = @persona.contents.create!(
+        content = @user.contents.create!(
           title:   Contents::TitleBuilder.build(text),
           body:    text,
-          sources: [ { type: "telegram", date: msg["date"], channel: channel } ],
+          sources: [ { type: "telegram", date: msg["date"], channel: channel, message_id: msg["id"] } ],
           status:  "pending"
         )
+        Contents::Connect.call(@persona, content)
         ProcessContentJob.perform_later(content.id)
-        existing_bodies << text
+        existing[text] = content.id
         imported += 1
       rescue ActiveRecord::ActiveRecordError
         skipped += 1

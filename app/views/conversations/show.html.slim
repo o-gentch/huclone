@@ -1,20 +1,30 @@
 = content_for :title, "Чат"
+= content_for :bare, true
 
 = turbo_stream_from @conversation
 
-div data-controller="chat" style="height: calc(100vh - 7.5rem); display: flex; flex-direction: column"
-
-  / Messages area
-  .overflow-y-auto.space-y-4.py-2 id="messages" data-chat-target="messages"
+.chat data-controller="chat"
+  .chat-scroll id="messages" data-chat-target="messages"
     - if @messages.empty?
-      #empty-state.flex.items-center.justify-center.h-40
-        .text-center.text-gray-400
-          .text-3xl.mb-2 💬
-          p class="text-sm" Начните разговор
+      #empty-state.hello
+        .blob.blob-lg: i
+        h1
+          | Привет! 
+          br
+          span О чём поговорим?
+        .ideas
+          button.idea.t-butter type="button" data-action="chat#fill" data-chat-text-param="Придумай тему для следующего поста" data-chat-mode-param="ideas"
+            span Придумай тему для следующего поста
+            small Идеи
+          button.idea.t-sage type="button" data-action="chat#fill" data-chat-text-param="Что я говорил про " data-chat-mode-param="strict"
+            span Что я говорил про…
+            small По материалам
+          button.idea.t-peach type="button" data-action="chat#fill" data-chat-text-param="Собери главу книги про " data-chat-mode-param="book"
+            span Собери главу книги из моих выступлений
+            small Книга
     - else
       - @messages.each do |message|
         = render "message", message: message
 
-  / Form — id="message_form" живёт внутри partial
-  .shrink-0.pt-3.border-t.border-gray-100
+  .composer-wrap
     = render "form", persona: @persona, conversation: @conversation, mode: "strict"

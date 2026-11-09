@@ -1,19 +1,20 @@
+- tones = %w[t-lav t-sage t-peach t-sky t-butter t-rose]
 - nodes.each_with_index do |(topic, children), i|
   - number = "#{prefix}#{i + 1}"
-  div id=dom_id(topic) class="#{'ml-6 border-l border-gray-100 pl-4' if topic.depth.positive?}"
-    .bg-white.border.border-gray-200.rounded-xl.px-5.py-4.mb-3
-      h3 class="font-medium text-gray-900" #{number}. #{topic.title}
-      - if topic.summary.present?
-        p class="text-sm text-gray-600 mt-1" = topic.summary
-      - if children.empty?
-        - sources = topic.sources(limit: 10)
-        - if sources.any?
-          p class="text-xs text-gray-400 mt-3 mb-1" Фрагменты (#{topic.sources.size})
-          ul class="text-xs space-y-0.5"
-            - sources.each do |s|
-              li
+  div id=dom_id(topic) class=("child" if topic.depth.positive?)
+    .card.topic
+      .num class=(topic.depth.positive? ? "t-sage" : tones[i % tones.size]) = number
+      div
+        h3 = topic.title
+        - if topic.summary.present?
+          p = topic.summary
+        - if children.empty?
+          - sources = topic.sources(limit: 10)
+          - if sources.any?
+            p.text-xs.text-faint.mt-3 Фрагменты (#{topic.sources.size})
+            .links.mt-1
+              - sources.each do |s|
                 = link_to "«#{s[:title]}», #{Recording.format_ms(s[:start_ms].to_i)}",
-                    persona_recording_path(persona, s[:recording_id], anchor: "t=#{s[:start_ms].to_i / 1000}"),
-                    class: "text-gray-500 hover:text-gray-900 underline decoration-gray-300"
+                    persona_recording_path(persona, s[:recording_id], anchor: "t=#{s[:start_ms].to_i / 1000}")
     - if children.any?
       = render "topics/node", nodes: children, persona: persona, prefix: "#{number}."

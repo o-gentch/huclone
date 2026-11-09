@@ -10,7 +10,9 @@ class Recording < ApplicationRecord
   MAX_UPLOAD_BYTES_REMOTE = 2.gigabytes
   LOW_CONFIDENCE = 0.6
 
-  belongs_to :persona
+  belongs_to :user
+  has_many :persona_recordings, dependent: :destroy
+  has_many :personas, through: :persona_recordings
   has_many :utterances, -> { order(:position) }, dependent: :delete_all
   has_many :speakers, -> { order(:label) }, dependent: :delete_all
   has_many :usage_events, dependent: :nullify
@@ -23,8 +25,7 @@ class Recording < ApplicationRecord
     uploaded: "uploaded",
     extracting_audio: "extracting_audio",
     transcribing: "transcribing",
-    awaiting_speaker_confirmation: "awaiting_speaker_confirmation",
-    confirmed: "confirmed",
+    transcribed: "transcribed",
     failed: "failed"
   }
 
@@ -35,7 +36,7 @@ class Recording < ApplicationRecord
   after_update_commit :broadcast_status, if: :saved_change_to_status?
 
   # Для списков: не грузим тяжёлые поля
-  scope :for_list, -> { select(:id, :persona_id, :title, :status, :duration_ms, :error_message, :created_at, :updated_at, :status_changed_at) }
+  scope :for_list, -> { select(:id, :user_id, :title, :status, :duration_ms, :error_message, :created_at, :updated_at, :status_changed_at) }
 
   def self.max_upload_bytes
     local_storage? ? MAX_UPLOAD_BYTES_LOCAL : MAX_UPLOAD_BYTES_REMOTE
@@ -60,8 +61,6 @@ class Recording < ApplicationRecord
   def advance!(status)
     update!(status: status, error_message: nil)
   end
-
-  def persona_speaker = speakers.find_by(is_persona: true)
 
   def speaker_name(speaker)
     speaker.display_name.presence || "Спикер #{speaker.label}"
@@ -90,10 +89,12 @@ class Recording < ApplicationRecord
   private
 
   def broadcast_status
-    Turbo::StreamsChannel.broadcast_replace_to(
-      [ persona, :recordings ], target: ActionView::RecordIdentifier.dom_id(self),
-      partial: "recordings/recording", locals: { recording: self, persona: persona }
-    )
+    persona_recordings.includes(:persona).each do |pr|
+      Turbo::StreamsChannel.broadcast_replace_to(
+        [ pr.persona, :recordings ], target: ActionView::RecordIdentifier.dom_id(self),
+        partial: "recordings/recording", locals: { recording: self, persona: pr.persona, persona_recording: pr }
+      )
+    end
     Turbo::StreamsChannel.broadcast_refresh_to([ self, :page ])
   end
 end

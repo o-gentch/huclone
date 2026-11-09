@@ -7,7 +7,7 @@ class Contents::ProcessorTest < ActiveSupport::TestCase
 
   setup do
     @persona = users(:one).personas.create!(name: "Test")
-    @content = @persona.contents.create!(title: "t", body: ([ "слово" ] * 1000).join(" "), sources: [], status: "pending")
+    @content = add_content(@persona, title: "t", body: ([ "слово" ] * 1000).join(" "), sources: [], status: "pending")
   end
 
   test "creates chunks and marks content done" do
@@ -47,7 +47,7 @@ class Contents::ProcessorSpeechTest < ActiveSupport::TestCase
 
   test "speech chunks get timecodes and the question is embedded but not stored" do
     persona = users(:one).personas.create!(name: "T")
-    content = persona.contents.create!(kind: "speech", title: "s", status: "pending", sources: [], start_ms: 5_000, end_ms: 65_000,
+    content = add_content(persona, kind: "speech", title: "s", status: "pending", sources: [], start_ms: 5_000, end_ms: 65_000,
                                        context_text: "Как начинать?", body: "Начинать нужно с малого. Потом растить.")
     Contents::Processor.new(content.id, embeddings: RecordingEmbeddings).call
 

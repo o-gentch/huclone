@@ -10,8 +10,8 @@ class Conversations::ContextBuilderTest < ActiveSupport::TestCase
         "verbatim_examples" => [ { "text" => "ПИСЬМО", "source" => "post" }, { "text" => "РЕЧЬ", "source" => "speech" } ]
       }
     )
-    @persona.contents.create!(kind: "post", title: "t", body: "Образец поста", status: "done", is_exemplar: true, sources: [])
-    @persona.contents.create!(kind: "speech", title: "s", body: "Образец речи", status: "done", is_exemplar: true, sources: [])
+    add_content(@persona, kind: "post", title: "t", body: "Образец поста", status: "done", is_exemplar: true)
+    add_content(@persona, kind: "speech", title: "s", body: "Образец речи", status: "done", is_exemplar: true)
   end
 
   test "write_post uses the written voice, post exemplars and no spoken material" do

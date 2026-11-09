@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -61,27 +61,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
     t.text "context_text"
     t.datetime "created_at", null: false
     t.integer "end_ms"
-    t.boolean "included_in_map", default: false, null: false
-    t.boolean "is_exemplar", default: false, null: false
     t.string "kind", default: "post", null: false
-    t.bigint "persona_id", null: false
     t.text "raw_body"
     t.bigint "recording_id"
     t.jsonb "sources", default: [], null: false
+    t.bigint "speaker_id"
     t.string "speaker_name"
     t.integer "start_ms"
     t.string "status", default: "pending", null: false
     t.text "summary"
     t.string "title"
     t.datetime "updated_at", null: false
-    t.index ["is_exemplar"], name: "index_contents_on_is_exemplar"
+    t.bigint "user_id", null: false
+    t.index "to_tsvector('russian'::regconfig, COALESCE(body, ''::text))", name: "index_contents_on_body_tsv", using: :gin
     t.index ["kind"], name: "index_contents_on_kind"
-    t.index ["persona_id"], name: "index_contents_on_persona_id"
-    t.index ["recording_id", "start_ms", "end_ms"], name: "index_contents_on_speech_range", unique: true, where: "((kind)::text = 'speech'::text)"
+    t.index ["recording_id", "speaker_id", "start_ms", "end_ms"], name: "index_contents_on_speech_range", unique: true, where: "((kind)::text = 'speech'::text)"
     t.index ["recording_id"], name: "index_contents_on_recording_id"
+    t.index ["speaker_id"], name: "index_contents_on_speaker_id"
     t.index ["status"], name: "index_contents_on_status"
-    t.check_constraint "kind::text = ANY (ARRAY['post'::character varying, 'speech'::character varying]::text[])", name: "contents_kind_check"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'done'::character varying, 'failed'::character varying]::text[])", name: "contents_status_check"
+    t.index ["user_id"], name: "index_contents_on_user_id"
+    t.check_constraint "kind::text = ANY (ARRAY['post'::character varying::text, 'speech'::character varying::text])", name: "contents_kind_check"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'processing'::character varying::text, 'done'::character varying::text, 'failed'::character varying::text])", name: "contents_status_check"
   end
 
   create_table "conversations", force: :cascade do |t|
@@ -101,6 +101,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
     t.datetime "updated_at", null: false
     t.index ["conversation_id", "created_at"], name: "index_messages_on_conversation_id_and_created_at"
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
+  end
+
+  create_table "persona_contents", force: :cascade do |t|
+    t.bigint "content_id", null: false
+    t.datetime "created_at", null: false
+    t.boolean "included_in_map", default: false, null: false
+    t.boolean "is_exemplar", default: false, null: false
+    t.bigint "persona_id", null: false
+    t.bigint "persona_recording_id"
+    t.string "role", default: "voice", null: false
+    t.datetime "updated_at", null: false
+    t.index ["content_id"], name: "index_persona_contents_on_content_id"
+    t.index ["persona_id", "content_id"], name: "index_persona_contents_on_persona_id_and_content_id", unique: true
+    t.index ["persona_id", "role"], name: "index_persona_contents_on_persona_id_and_role"
+    t.index ["persona_id"], name: "index_persona_contents_on_persona_id"
+    t.index ["persona_recording_id"], name: "index_persona_contents_on_persona_recording_id"
+    t.check_constraint "role::text = ANY (ARRAY['voice'::character varying::text, 'knowledge'::character varying::text])", name: "persona_contents_role_check"
+  end
+
+  create_table "persona_recordings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "persona_id", null: false
+    t.bigint "recording_id", null: false
+    t.bigint "speaker_ids", default: [], null: false, array: true
+    t.string "status", default: "needs_speakers", null: false
+    t.text "summary"
+    t.datetime "updated_at", null: false
+    t.index ["persona_id", "recording_id"], name: "index_persona_recordings_on_persona_id_and_recording_id", unique: true
+    t.index ["persona_id"], name: "index_persona_recordings_on_persona_id"
+    t.index ["recording_id"], name: "index_persona_recordings_on_recording_id"
+    t.check_constraint "status::text = ANY (ARRAY['needs_speakers'::character varying::text, 'ready'::character varying::text])", name: "persona_recordings_status_check"
   end
 
   create_table "personas", force: :cascade do |t|
@@ -123,19 +154,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
     t.text "error_message"
     t.integer "expected_speakers"
     t.string "language", default: "ru", null: false
-    t.bigint "persona_id", null: false
     t.string "provider"
     t.string "provider_job_id"
     t.string "source_checksum"
     t.string "status", default: "uploaded", null: false
     t.datetime "status_changed_at"
-    t.text "summary"
     t.string "title"
     t.datetime "updated_at", null: false
-    t.index ["persona_id", "source_checksum"], name: "index_recordings_on_persona_id_and_source_checksum"
-    t.index ["persona_id"], name: "index_recordings_on_persona_id"
+    t.bigint "user_id", null: false
     t.index ["status", "status_changed_at"], name: "index_recordings_on_status_and_status_changed_at"
-    t.check_constraint "status::text = ANY (ARRAY['uploaded'::character varying, 'extracting_audio'::character varying, 'transcribing'::character varying, 'awaiting_speaker_confirmation'::character varying, 'confirmed'::character varying, 'failed'::character varying]::text[])", name: "recordings_status_check"
+    t.index ["user_id", "source_checksum"], name: "index_recordings_on_user_id_and_source_checksum", unique: true, where: "(source_checksum IS NOT NULL)"
+    t.index ["user_id"], name: "index_recordings_on_user_id"
+    t.check_constraint "status::text = ANY (ARRAY['uploaded'::character varying::text, 'extracting_audio'::character varying::text, 'transcribing'::character varying::text, 'transcribed'::character varying::text, 'failed'::character varying::text])", name: "recordings_status_check"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -150,14 +180,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
   create_table "speakers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "display_name"
-    t.boolean "is_persona", default: false, null: false
     t.string "label", null: false
     t.bigint "recording_id", null: false
     t.integer "speech_ms", default: 0, null: false
+    t.string "speech_state", default: "idle", null: false
     t.datetime "updated_at", null: false
     t.integer "words_count", default: 0, null: false
     t.index ["recording_id", "label"], name: "index_speakers_on_recording_id_and_label", unique: true
     t.index ["recording_id"], name: "index_speakers_on_recording_id"
+    t.check_constraint "speech_state::text = ANY (ARRAY['idle'::character varying::text, 'building'::character varying::text, 'ready'::character varying::text])", name: "speakers_speech_state_check"
   end
 
   create_table "topic_chunks", force: :cascade do |t|
@@ -216,6 +247,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
     t.integer "start_ms", null: false
     t.text "text", null: false
     t.datetime "updated_at", null: false
+    t.index "to_tsvector('russian'::regconfig, text)", name: "index_utterances_on_text_tsv", using: :gin
     t.index ["recording_id", "position"], name: "index_utterances_on_recording_id_and_position"
     t.index ["speaker_id"], name: "index_utterances_on_speaker_id"
   end
@@ -223,12 +255,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_120000) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "chunks", "contents"
-  add_foreign_key "contents", "personas"
   add_foreign_key "contents", "recordings", on_delete: :cascade
+  add_foreign_key "contents", "speakers", on_delete: :nullify
+  add_foreign_key "contents", "users", on_delete: :cascade
   add_foreign_key "conversations", "personas"
   add_foreign_key "messages", "conversations"
+  add_foreign_key "persona_contents", "contents", on_delete: :cascade
+  add_foreign_key "persona_contents", "persona_recordings", on_delete: :cascade
+  add_foreign_key "persona_contents", "personas", on_delete: :cascade
+  add_foreign_key "persona_recordings", "personas", on_delete: :cascade
+  add_foreign_key "persona_recordings", "recordings", on_delete: :cascade
   add_foreign_key "personas", "users"
-  add_foreign_key "recordings", "personas", on_delete: :cascade
+  add_foreign_key "recordings", "users", on_delete: :cascade
   add_foreign_key "sessions", "users"
   add_foreign_key "speakers", "recordings", on_delete: :cascade
   add_foreign_key "topic_chunks", "chunks", on_delete: :cascade

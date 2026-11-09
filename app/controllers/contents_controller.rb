@@ -5,23 +5,23 @@ class ContentsController < ApplicationController
 
   def index
     # Фрагменты речи принадлежат записям и управляются со страницы «Видео»
-    @contents = @persona.contents.posts.order(created_at: :desc)
+    @links = @persona.persona_contents.joins(:content).merge(Content.posts).includes(:content).order("contents.created_at DESC")
   end
 
   def new
-    @content = @persona.contents.new
+    @content = Content.new
   end
 
   def create
     text = extract_text(params[:content])
     if text.bytesize > MAX_BODY_BYTES
-      @content = @persona.contents.new(title: params[:content][:title], body: nil)
+      @content = Content.new(title: params[:content][:title], body: nil)
       @content.errors.add(:body, "слишком большой (максимум #{MAX_BODY_BYTES / 1.megabyte} МБ)")
       render :new, status: :unprocessable_entity
       return
     end
 
-    @content = @persona.contents.new(
+    @content = Current.user.contents.new(
       title:   params[:content][:title].presence || Contents::TitleBuilder.build(text),
       body:    text,
       sources: [ { type: "manual" } ],
@@ -35,6 +35,7 @@ class ContentsController < ApplicationController
     end
 
     if @content.save
+      Contents::Connect.call(@persona, @content)
       # Карта пересобирается из ProcessContentJob после завершения обработки
       ProcessContentJob.perform_later(@content.id)
       if params[:add_more]
@@ -48,7 +49,7 @@ class ContentsController < ApplicationController
   end
 
   def destroy
-    @persona.contents.find(params[:id]).destroy
+    Contents::Connect.disconnect(@persona, @persona.contents.find(params[:id]))
     redirect_to persona_contents_path(@persona), notice: "Удалено"
   end
 

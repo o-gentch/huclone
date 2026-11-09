@@ -21,10 +21,12 @@ module Ai
     # Возвращает чанки с content (и recording) — для цитирования источника
     def call
       query_embedding = Ai::Embeddings.fetch(@query)
+      enable_iterative_scan
 
+      # Сначала сужаем до материалов пользователя, затем присоединяем связь с DD (HNSW фильтрует уже после выборки соседей)
       scope = Chunk
-        .joins(:content)
-        .where(contents: { persona_id: @persona_id, status: "done" })
+        .joins(content: :persona_contents)
+        .where(persona_contents: { persona_id: @persona_id }, contents: { status: "done" })
       scope = scope.where(contents: { recording_id: @recording_id }) if @recording_id
       scope = scope.where(contents: { kind: @kind }) if @kind
 
@@ -32,6 +34,13 @@ module Ai
         .includes(content: :recording)
         .nearest_neighbors(:embedding, query_embedding, distance: "cosine")
         .limit(@top_k)
+    end
+
+    # pgvector ≥ 0.8: если фильтр по DD отсеивает часть соседей, индекс продолжает сканирование
+    def enable_iterative_scan
+      Chunk.connection.execute("SET hnsw.iterative_scan = relaxed_order")
+    rescue ActiveRecord::StatementInvalid
+      nil # старый pgvector без итеративного сканирования
     end
 
     # Обрезает набор фрагментов по суммарному размеру

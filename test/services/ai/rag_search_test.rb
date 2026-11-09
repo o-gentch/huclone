@@ -7,7 +7,7 @@ class Ai::RagSearchTest < ActiveSupport::TestCase
     @rec2 = create_recording(@persona, status: "confirmed", title: "Вторая")
     @speech1 = create_speech(@persona, @rec1, 0, 1)
     @speech2 = create_speech(@persona, @rec2, 0, 2)
-    @post = @persona.contents.create!(kind: "post", title: "Пост", body: "п", status: "done", sources: [])
+    @post = add_content(@persona, kind: "post", title: "Пост", body: "п", status: "done")
     @post.chunks.create!(text: "п", position: 0, embedding: cluster_vector(0, 99))
   end
 

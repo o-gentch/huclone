@@ -33,7 +33,7 @@ module Recordings
         Utterance.insert_all!(rows)
 
         @recording.update!(duration_ms: @result.duration_ms.presence || @recording.duration_ms)
-        @recording.advance!("awaiting_speaker_confirmation")
+        @recording.advance!("transcribed")
       end
     end
   end

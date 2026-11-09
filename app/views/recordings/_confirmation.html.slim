@@ -1,39 +1,39 @@
 - total = speakers.sum(&:speech_ms)
-- preselected = speakers.max_by(&:speech_ms)
+- preselected = selected.presence || [ speakers.max_by(&:speech_ms).id ]
 - low = recording.low_confidence_share
 
-= form_with url: confirm_persona_recording_path(persona, recording), class: "space-y-4 mb-8" do
-  h2 class="text-lg font-semibold text-gray-900" Кто из говорящих — вы?
-  p class="text-sm text-gray-500" Послушайте фрагменты и отметьте себя. Только ваша речь пойдёт в карту личности.
+= form_with url: confirm_persona_recording_path(persona, recording), class: "mb-8" do
+  h2.mb-1 Кто из говорящих — #{persona.name}?
+  p.sub.mb-4 Послушайте фрагменты и отметьте всех, кто относится к этому Digital Double (можно несколько). Только их речь пойдёт в портрет и знания.
   - if low > 0.15
-    p class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"
+    .alert.alert-warn
       | Около #{(low * 100).round}% реплик распознаны неуверенно. Если голоса перепутаны, попробуйте перераспознать с указанием числа говорящих (ниже).
 
   - speakers.each do |speaker|
-    label class="block bg-white border border-gray-200 rounded-xl px-5 py-4 cursor-pointer has-[:checked]:border-gray-900"
+    label.card.sp
       .flex.items-start.gap-3
-        = radio_button_tag "speaker_id", speaker.id, speaker == preselected, class: "mt-1"
+        = check_box_tag "speaker_ids[]", speaker.id, preselected.include?(speaker.id), id: "speaker_#{speaker.id}", class: "mt-1.5"
         .flex-1.min-w-0
           .flex.items-center.justify-between.gap-3
-            span class="text-xs font-medium rounded-full px-2.5 py-0.5 #{speaker_color(speaker)}" Спикер #{speaker.label}
-            span class="text-xs text-gray-400" #{speaker.share(total)}% речи · #{speaker.words_count} слов
+            span class="pill #{speaker_color(speaker)}" Спикер #{speaker.label}
+            - if other_choices[speaker.id].present?
+              span.text-xs.text-faint выбран у: #{other_choices[speaker.id].to_sentence}
+            span.text-xs.text-faint.font-medium #{speaker.share(total)}% речи · #{speaker.words_count} слов
           = text_field_tag "names[#{speaker.id}]", speaker.display_name, placeholder: "Имя (необязательно), например «Ведущий»", maxlength: 60,
-              class: "mt-2 w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
-          ul class="mt-3 space-y-2"
+              class: "inp mt-2.5"
+          ul.mt-3.space-y-2
             - speaker.sample_utterances.each do |u|
-              li class="flex items-start gap-2 text-sm text-gray-600"
-                button type="button" class="shrink-0 text-xs px-2 py-0.5 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer" data-action="audio-player#play" data-audio-player-start-param=(u.start_ms / 1000.0) data-audio-player-end-param=(u.end_ms / 1000.0) ▶ #{u.timecode}
+              li.flex.items-start.gap-2.5.text-sm.text-[#55526E]
+                button.play type="button" data-action="audio-player#play" data-audio-player-start-param=(u.start_ms / 1000.0) data-audio-player-end-param=(u.end_ms / 1000.0) ▶ #{u.timecode}
                 span = u.text.truncate(200)
 
-  label class="block bg-white border border-gray-200 rounded-xl px-5 py-3 cursor-pointer has-[:checked]:border-gray-900"
-    = radio_button_tag "speaker_id", "none", false
-    span class="ml-2 text-sm text-gray-700" Меня нет в этой записи
+  .flex.items-center.gap-3.mt-2
+    = submit_tag "Сохранить", class: "btn btn-dark"
+    = button_tag "Этого человека нет в записи", name: "none", value: "1", class: "btn"
 
-  = submit_tag "Подтвердить", class: "bg-gray-900 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-gray-700 cursor-pointer"
-
-= form_with url: reprocess_persona_recording_path(persona, recording), class: "flex items-center gap-2 mb-8 text-sm text-gray-500",
+= form_with url: reprocess_persona_recording_path(persona, recording), class: "flex items-center gap-2 mb-8 text-sm text-muted flex-wrap",
     data: { turbo_confirm: "Перераспознавание тратит минуты квоты. Продолжить?" } do
   span Голоса перепутаны?
-  = number_field_tag "expected_speakers", recording.expected_speakers || speakers.size, min: 1, max: 10, class: "w-16 border border-gray-200 rounded-lg px-2 py-1"
+  = number_field_tag "expected_speakers", recording.expected_speakers || speakers.size, min: 1, max: 10, class: "inp w-16! px-2! py-1!"
   span говорящих
-  = submit_tag "Перераспознать", class: "text-sm px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
+  = submit_tag "Перераспознать", class: "btn btn-sm"

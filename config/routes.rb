@@ -1,6 +1,13 @@
 Rails.application.routes.draw do
   resource :session
   get "up" => "rails/health#show", as: :rails_health_check
+  get "library", to: "library#index", as: :library
+  post "library/connect", to: "library#connect", as: :connect_library
+  post "library/delete", to: "library#delete", as: :delete_library
+  get "library/recordings/:id", to: "library#recording", as: :library_recording
+  get "library/recordings/:id/audio", to: "library#audio", as: :audio_library_recording
+  delete "library/recordings/:id/personas/:persona_id", to: "library#disconnect", as: :library_recording_persona
+
   resources :personas, only: [ :new, :create ] do
     resources :contents, only: [ :index, :new, :create, :destroy ]
     resources :recordings, only: [ :index, :new, :create, :show, :destroy ] do

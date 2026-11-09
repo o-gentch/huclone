@@ -65,18 +65,20 @@ class RecordingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, Recording.count
   end
 
-  test "duplicate upload is flagged and can be forced" do
+  test "duplicate upload reuses the library recording and connects it to the DD" do
     sign_in_as @owner
     post persona_recordings_path(@persona), params: { recording: { source_file: blob.signed_id } }
     assert_equal 1, Recording.count
 
     dup = blob
     post persona_recordings_path(@persona), params: { recording: { source_file: dup.signed_id } }
-    assert_response :unprocessable_entity
+    assert_redirected_to persona_recording_path(@persona, Recording.first)
     assert_equal 1, Recording.count
 
-    post persona_recordings_path(@persona), params: { force: "1", recording: { source_file: dup.signed_id } }
-    assert_equal 2, Recording.count
+    second = @owner.personas.create!(name: "Second")
+    post persona_recordings_path(second), params: { recording: { source_file: blob.signed_id } }
+    assert_equal 1, Recording.count
+    assert_equal 2, PersonaRecording.where(recording: Recording.first).count
   end
 
   test "exhausted quota blocks new uploads" do
@@ -96,17 +98,18 @@ class RecordingsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Кто из говорящих", response.body
 
     me = recording.speakers.find_by(label: "B")
-    post confirm_persona_recording_path(@persona, recording), params: { speaker_id: me.id, names: { me.id => "Автор" } }
+    post confirm_persona_recording_path(@persona, recording), params: { speaker_ids: [ me.id ], names: { me.id => "Автор" } }
     assert_redirected_to persona_recording_path(@persona, recording)
-    assert recording.reload.confirmed?
-    assert me.reload.is_persona
+    link = @persona.persona_recordings.find_by(recording: recording)
+    assert link.ready?
+    assert_equal [ me.id ], link.speaker_ids
   end
 
   test "confirm for a foreign persona's recording is 404" do
     other_persona = users(:two).personas.create!(name: "Other")
-    recording = create_recording(other_persona, status: "awaiting_speaker_confirmation")
+    recording = create_recording(other_persona, status: "transcribed")
     sign_in_as @owner
-    post confirm_persona_recording_path(@persona, recording), params: { speaker_id: "none" }
+    post confirm_persona_recording_path(@persona, recording), params: { none: "1" }
     assert_response :not_found
   end
 

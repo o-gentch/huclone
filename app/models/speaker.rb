@@ -1,6 +1,7 @@
 class Speaker < ApplicationRecord
   belongs_to :recording
   has_many :utterances, dependent: :delete_all
+  has_many :contents, dependent: :nullify
 
   def name = display_name.presence || "Спикер #{label}"
 

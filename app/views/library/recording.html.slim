@@ -1,0 +1,46 @@
+= content_for :title, @recording.title
+
+= link_to "← Библиотека", library_path, class: "back"
+.page-head.mt-3
+  .min-w-0
+    h1.truncate = @recording.title
+    .sub #{@recording.created_at.strftime('%d.%m.%Y')} · #{@recording.duration_label}
+  = status_badge(@recording.status)
+
+- if @recording.failed?
+  .alert.alert-err = @recording.error_message.presence || "Не удалось обработать запись"
+
+h2.mb-3 Подключено к
+- if @links.empty?
+  p.sub.mb-3 Пока ни к одному Digital Double
+- @links.each do |link|
+  - mine = @speakers.select { |s| link.speaker_ids.include?(s.id) }
+  .card.row
+    .grow.min-w-0
+      .row-title = link.persona.name
+      .row-meta
+        - if link.needs_speakers?
+          | нужно выбрать спикера
+        - elsif mine.any?
+          | спикеры: #{mine.map(&:name).to_sentence}
+        - else
+          | этого человека нет в записи
+    - if @recording.transcribed?
+      = link_to (link.needs_speakers? ? "Выбрать спикеров" : "Изменить"), persona_recording_path(link.persona, @recording, change: 1), class: "btn btn-sm"
+    = button_to "Отключить", library_recording_persona_path(@recording, link.persona), method: :delete, class: "btn btn-sm", form: { class: "contents" },
+        data: { turbo_confirm: "Отключить от «#{link.persona.name}»? Запись останется в библиотеке." }
+
+- if @free_personas.any?
+  = form_with url: connect_library_path, class: "flex gap-2 mb-8" do
+    = hidden_field_tag "items[]", "recording_#{@recording.id}"
+    = select_tag :persona_id, options_for_select(@free_personas.map { |p| [ p.name, p.id ] }), class: "inp w-auto!"
+    = submit_tag "Подключить к DD", class: "btn btn-primary"
+
+- if @recording.audio_file.attached? && @speakers.any?
+  div data-controller="audio-player"
+    .card.player
+      audio controls=true preload="metadata" data-audio-player-target="audio" data-action="timeupdate->audio-player#tick" src=audio_library_recording_path(@recording)
+    = render "recordings/transcript", utterances: @utterances, speakers: @speakers
+
+= button_to "Удалить из библиотеки", delete_library_path, params: { items: [ "recording_#{@recording.id}" ] }, class: "btn btn-danger btn-sm",
+    form: { class: "mt-6" }, data: { turbo_confirm: "Удалить «#{@recording.title}» отовсюду? Это необратимо." }

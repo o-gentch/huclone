@@ -1,27 +1,27 @@
 module Recordings
-  # Подтверждённая запись → Content(kind: speech) на каждый ход диалога.
-  # Идемпотентно: повторный запуск заменяет прежние материалы этой записи.
+  # Речь одного спикера → Content(kind: speech) на каждый ход диалога.
+  # Идемпотентно: повторный запуск заменяет прежние фрагменты этого спикера.
   class Ingest
     MAX_CONCURRENT = 4
 
     def self.call(...) = new(...).call
 
-    def initialize(recording, ai_client: Ai::Client.instance)
+    def initialize(recording, speaker:, ai_client: Ai::Client.instance)
       @recording = recording
+      @speaker = speaker
       @ai_client = ai_client
     end
 
     def call
-      turns = TurnBuilder.call(@recording)
+      turns = TurnBuilder.call(@recording, speaker: @speaker)
       cleaned = clean_all(turns)
       now = Time.current
 
       contents = Content.transaction do
-        Content.where(recording_id: @recording.id).destroy_all
-        @recording.contents.reset
+        Content.where(recording_id: @recording.id, speaker_id: @speaker.id).destroy_all
         turns.each_with_index.map do |turn, i|
-          @recording.persona.contents.create!(
-            kind: "speech", recording: @recording, status: "pending",
+          Content.create!(
+            user_id: @recording.user_id, kind: "speech", recording: @recording, speaker: @speaker, status: "pending",
             title: "#{@recording.title}, #{Recording.format_ms(turn.start_ms)}",
             body: cleaned[i], raw_body: turn.text,
             context_text: turn.context_text, speaker_name: turn.speaker_name,

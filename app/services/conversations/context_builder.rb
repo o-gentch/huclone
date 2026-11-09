@@ -128,7 +128,7 @@ module Conversations
     def exemplars_section
       return nil unless @intent == "write_post"
 
-      exemplars = @persona.contents.posts.exemplars.limit(3)
+      exemplars = @persona.contents.posts.merge(PersonaContent.exemplars).limit(3)
       return nil if exemplars.empty?
 
       posts = exemplars.map.with_index(1) { |c, i| "### Пост #{i}\n#{c.body.truncate(EXEMPLAR_MAX_CHARS)}" }.join("\n\n")

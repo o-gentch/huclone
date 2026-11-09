@@ -43,15 +43,15 @@ module Knowledge
 
     def load_items
       vectors = content_vectors
-      Content.speeches.done.where(persona_id: @persona.id).where.not(summary: [ nil, "" ]).order(:id).filter_map do |c|
+      @persona.contents.speeches.done.where.not(summary: [ nil, "" ]).order(:id).filter_map do |c|
         Item.new(c, vectors[c.id]) if vectors[c.id]
       end
     end
 
     # Среднее эмбеддингов чанков фрагмента — одним SQL-запросом
     def content_vectors
-      rows = Chunk.joins(:content)
-                  .where(contents: { persona_id: @persona.id, kind: "speech", status: "done" })
+      rows = Chunk.joins(content: :persona_contents)
+                  .where(persona_contents: { persona_id: @persona.id }, contents: { kind: "speech", status: "done" })
                   .group(:content_id).pluck(:content_id, Arel.sql("AVG(chunks.embedding)::text"))
       rows.to_h { |id, text| [ id, JSON.parse(text) ] }
     end
@@ -60,7 +60,7 @@ module Knowledge
 
     # true — всё присоединено без пересборки
     def attach_incrementally(items)
-      attached_ids = Chunk.joins(:topic_chunks, :content).where(contents: { persona_id: @persona.id }).distinct.pluck(:content_id).to_set
+      attached_ids = Chunk.joins(:topic_chunks, content: :persona_contents).where(persona_contents: { persona_id: @persona.id }).distinct.pluck(:content_id).to_set
       new_items = items.reject { |i| attached_ids.include?(i.content.id) }
       return true if new_items.empty?
       return false if new_items.size > [ INCREMENTAL_MIN_ALLOWANCE, (attached_ids.size * INCREMENTAL_MAX_SHARE).ceil ].max

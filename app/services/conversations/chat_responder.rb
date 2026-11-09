@@ -11,7 +11,7 @@ module Conversations
       Turbo::StreamsChannel.broadcast_update_to(
         assistant_message.conversation,
         target: "message_#{assistant_message.id}_body",
-        html: "<p class=\"mb-2 last:mb-0\">#{ERROR_TEXT}</p>"
+        html: "<p class=\"mb-3 last:mb-0\">#{ERROR_TEXT}</p>"
       )
     end
 
@@ -154,12 +154,12 @@ module Conversations
     def render_body(text, streaming:)
       paragraphs = text.gsub(/\r\n?/, "\n")
         .split("\n\n")
-        .map { |para| "<p class=\"mb-2 last:mb-0\">#{CGI.escapeHTML(para).gsub("\n", "<br>")}</p>" }
+        .map { |para| "<p class=\"mb-3 last:mb-0\">#{CGI.escapeHTML(para).gsub("\n", "<br>")}</p>" }
         .join
 
       return paragraphs unless streaming
 
-      paragraphs + "<span class=\"inline-block w-1 h-4 bg-gray-400 animate-pulse ml-0.5 rounded-sm align-middle\"></span>"
+      paragraphs + "<span class=\"cursor\"></span>"
     end
   end
 end

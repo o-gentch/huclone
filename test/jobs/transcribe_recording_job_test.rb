@@ -14,7 +14,7 @@ class TranscribeRecordingJobTest < ActiveJob::TestCase
   test "submits once, stores speakers and moves to awaiting confirmation" do
     TranscribeRecordingJob.perform_now(@recording.id)
     @recording.reload
-    assert @recording.awaiting_speaker_confirmation?
+    assert @recording.transcribed?
     assert_equal "fake-1", @recording.provider_job_id
     assert_equal 2, @recording.speakers.count
     assert_equal 1, @fake.submit_count
@@ -29,7 +29,7 @@ class TranscribeRecordingJobTest < ActiveJob::TestCase
     assert @recording.reload.transcribing?
 
     TranscribeRecordingJob.perform_now(@recording.id, 1)
-    assert @recording.reload.awaiting_speaker_confirmation?
+    assert @recording.reload.transcribed?
     assert_equal 1, @fake.submit_count
     assert_equal 1, UsageEvent.count
   end

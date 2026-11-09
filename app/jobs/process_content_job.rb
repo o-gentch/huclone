@@ -17,19 +17,8 @@ class ProcessContentJob < ApplicationJob
   end
 
   def self.signal_completion(content_id)
-    content = Content.find_by(id: content_id)
-    return unless content
-
-    still_pending = Content
-      .where(persona_id: content.persona_id, status: %w[pending processing])
-      .exists?
-    return if still_pending
-
-    # Все фрагменты записи готовы — можно строить резюме и дерево тем
-    if content.recording_id && !Content.where(recording_id: content.recording_id, status: %w[pending processing]).exists?
-      Knowledge::SummarizeRecordingJob.perform_later(content.recording_id)
+    PersonaContent.where(content_id: content_id).includes(:persona).map(&:persona).uniq.each do |persona|
+      Personas::ContentReady.call(persona)
     end
-
-    content.persona.schedule_map_build!
   end
 end

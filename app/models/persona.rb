@@ -1,8 +1,10 @@
 class Persona < ApplicationRecord
   belongs_to :user, optional: true # nil только у персон, созданных до появления аккаунтов
-  has_many :contents, dependent: :destroy
+  has_many :persona_contents, dependent: :delete_all
+  has_many :contents, through: :persona_contents
+  has_many :persona_recordings, dependent: :destroy
+  has_many :recordings, through: :persona_recordings
   has_many :conversations, dependent: :destroy
-  has_many :recordings, dependent: :destroy
   has_many :topics, dependent: :delete_all
 
   validates :name, presence: true
@@ -20,6 +22,14 @@ class Persona < ApplicationRecord
 
     BuildPersonalityMapJob.set(wait: MAP_DEBOUNCE).perform_later(id)
     true
+  end
+
+  # Из знаний убрали «голосовой» материал: карта и темы строятся заново
+  def reset_derived_knowledge!
+    update!(personality_map: {}, personality_map_built_at: nil, linguistics: {})
+    persona_contents.update_all(included_in_map: false)
+    schedule_map_build!
+    Knowledge::BuildTopicTreeJob.perform_later(id, true)
   end
 
   def personality_map_ready?
