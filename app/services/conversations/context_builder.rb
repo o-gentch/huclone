@@ -70,6 +70,7 @@ module Conversations
     def build_system
       [
         BASE_INSTRUCTION,
+        instructions_section,
         personality_section,
         linguistics_section,
         exemplars_section,
@@ -104,6 +105,11 @@ module Conversations
 
       voice = written_voice? ? WRITTEN_INSTRUCTION : (SPOKEN_INSTRUCTION if map["spoken_style"].present?)
       [ "## Карта личности автора\n#{map.to_json}", voice ].compact.join("\n\n")
+    end
+
+    def instructions_section
+      text = @persona.system_prompt.to_s.strip
+      "## Инструкции владельца (роль и поведение)\n#{text.truncate(2_000)}" if text.present?
     end
 
     def written_voice? = @intent == "write_post"

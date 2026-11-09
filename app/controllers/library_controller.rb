@@ -129,7 +129,9 @@ class LibraryController < ApplicationController
     dd = @filters[:dd]
     return scope if dd.blank?
 
-    if dd == "none"
+    if dd.start_with?("not:")
+      scope.where.not(id: link_model.where(persona_id: dd.delete_prefix("not:").to_i).select(fk))
+    elsif dd == "none"
       scope.where.not(id: link_model.select(fk))
     else
       scope.where(id: link_model.where(persona_id: Current.user.personas.where(id: dd)).select(fk))

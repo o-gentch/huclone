@@ -5,8 +5,9 @@
     .tile.t-peach = section_icon(:contents)
     div
       h1 Контент
-      .sub Тексты, на которых учится аватар
+      .sub Тексты, на которых учится этот Digital Double
   .flex.items-center.gap-2
+    = link_to "Добавить из библиотеки", library_path(dd: "not:#{@persona.id}"), class: "btn"
     = link_to "Импорт из Telegram", new_persona_telegram_import_path(@persona), class: "btn"
     = link_to "＋ Добавить текст", new_persona_content_path(@persona), class: "btn btn-primary"
 
@@ -14,7 +15,7 @@
   .empty
     .tile.t-peach = section_icon(:contents)
     p Пока нет текстов
-    p.sub Добавьте посты, статьи или конспекты — аватар научится на них
+    p.sub Добавьте посты, статьи или конспекты — Digital Double научится на них
 - else
   - @links.each do |link|
     - content = link.content
@@ -24,8 +25,11 @@
         .row-meta = content.created_at.strftime("%d.%m.%Y")
       - if link.is_exemplar
         span.badge.b-warn эталон
+      = button_to (link.is_exemplar ? "Не эталон" : "В эталоны"), toggle_exemplar_persona_content_path(@persona, content), class: "btn btn-sm", form: { class: "contents" }
+      - if content.failed?
+        = button_to "Повторить", retry_persona_content_path(@persona, content), class: "btn btn-sm", form: { class: "contents" }
       = status_badge(content.status)
-      = button_to persona_content_path(@persona, content), method: :delete, class: "x", title: "Удалить",
-          data: { turbo_confirm: "Удалить «#{content.title}»?" }, form: { class: "contents" } do
+      = button_to persona_content_path(@persona, content), method: :delete, class: "x", title: "Отключить от Digital Double",
+          data: { turbo_confirm: "Отключить «#{content.title}» от «#{@persona.name}»? Если он больше нигде не подключён, будет удалён." }, form: { class: "contents" } do
         svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
           path d="M6 18L18 6M6 6l12 12"

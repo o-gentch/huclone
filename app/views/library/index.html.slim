@@ -15,7 +15,7 @@
   = search_field_tag :q, @filters[:q], placeholder: "Поиск по названию и тексту", class: "inp flex-1! min-w-48"
   = select_tag :type, options_for_select([ [ "Видео и посты", "" ], [ "Только видео", "video" ], [ "Только посты", "post" ] ], @filters[:type]), class: "inp w-auto!"
   = select_tag :status, options_for_select([ [ "Любой статус", "" ], [ "Готово", "ready" ], [ "В обработке", "processing" ], [ "Ошибка", "failed" ] ], @filters[:status]), class: "inp w-auto!"
-  = select_tag :dd, options_for_select([ [ "Любой DD", "" ], [ "Никуда не подключено", "none" ] ] + @personas.map { |p| [ "Подключено к «#{p.name}»", p.id ] }, @filters[:dd]), class: "inp w-auto!"
+  = select_tag :dd, options_for_select([ [ "Любой DD", "" ], [ "Никуда не подключено", "none" ] ] + @personas.map { |p| [ "Не подключено к «#{p.name}»", "not:#{p.id}" ] } + @personas.map { |p| [ "Подключено к «#{p.name}»", p.id ] }, @filters[:dd]), class: "inp w-auto!"
   = hidden_field_tag :source, @filters[:source]
   = submit_tag "Найти", name: nil, class: "btn"
 
@@ -37,7 +37,7 @@
         input type="checkbox" data-action="library-select#toggleAll"
         | Выбрать все на странице
       .grow
-      = select_tag :persona_id, options_for_select(@personas.map { |p| [ p.name, p.id ] }), class: "inp w-auto!"
+      = select_tag :persona_id, options_for_select(@personas.map { |p| [ p.name, p.id ] }, @filters[:dd].to_s.delete_prefix("not:").presence || current_persona&.id), class: "inp w-auto!"
       = select_tag :role, options_for_select([ [ "Посты: написано этим человеком", "voice" ], [ "Посты: только знания", "knowledge" ] ]), class: "inp w-auto!"
       = submit_tag "Подключить к DD", class: "btn btn-primary btn-sm"
       = submit_tag "Удалить из библиотеки", formaction: delete_library_path, class: "btn btn-danger btn-sm",

@@ -1,0 +1,53 @@
+= content_for :title, "Настройки"
+= content_for :narrow, true
+
+.page-head
+  .page-head-l
+    .tile.t-rose = section_icon(:personas)
+    div
+      h1 Настройки
+      .sub Digital Double «#{@persona.name}»
+
+= form_with model: @persona do |f|
+  - if @persona.errors.any?
+    .alert.alert-err = @persona.errors.full_messages.first
+
+  .field
+    = f.label :name, "Название", class: "label"
+    = f.text_field :name, class: "inp"
+
+  .field
+    = f.label :system_prompt, class: "label" do
+      | Инструкции
+      small  (роль и поведение)
+    = f.text_area :system_prompt, rows: 6, class: "inp", placeholder: "Например: ты — автор канала про маркетинг, отвечай кратко и с примерами"
+    p.hint Добавляются к каждому ответу этого Digital Double.
+
+  = f.submit "Сохранить", class: "btn btn-primary"
+
+h2.mt-10.mb-3 Портрет
+- map = @persona.personality_map
+- if map.blank?
+  p.sub Портрет появится, когда обработаются материалы, помеченные как «написано этим человеком», или выбранные спикеры видео.
+- else
+  .card.px-5.py-4.mb-3
+    - if (beliefs = Array(map["core_beliefs"]).first(5)).any?
+      h3.mb-1 Убеждения
+      ul.list-disc.ml-5.mb-3
+        - beliefs.each do |b|
+          li = b
+    - if (topics = Array(map["main_topics"]).first(8)).any?
+      h3.mb-1 Главные темы
+      p.mb-3 = topics.join(", ")
+    - style = map["speech_style"]
+    - if style.is_a?(Hash) && style["register"].present?
+      h3.mb-1 Стиль
+      p.mb-1 = style["register"]
+    - if @persona.personality_map_built_at
+      p.sub Обновлён #{@persona.personality_map_built_at.strftime("%d.%m.%Y %H:%M")}
+  = button_to "Пересобрать портрет", rebuild_portrait_persona_path(@persona), class: "btn", form: { class: "contents" },
+      data: { turbo_confirm: "Портрет будет построен заново по всем материалам. Продолжить?" }
+
+h2.mt-10.mb-3 Удаление
+= button_to "Удалить Digital Double", persona_path(@persona), method: :delete, class: "btn btn-danger btn-sm", form: { class: "contents" },
+    data: { turbo_confirm: "Удалить «#{@persona.name}»? Чаты и темы пропадут, материалы останутся в библиотеке." }

@@ -2,10 +2,10 @@ doctype html
 html
   head
     title
-      = content_for?(:title) ? yield(:title) : "Аватар"
+      = content_for?(:title) ? yield(:title) : "Digital Double"
     meta name="viewport" content="width=device-width,initial-scale=1"
     meta name="apple-mobile-web-app-capable" content="yes"
-    meta name="application-name" content="Аватар"
+    meta name="application-name" content="Digital Double"
     meta name="mobile-web-app-capable" content="yes"
     = csrf_meta_tags
     = csp_meta_tag
@@ -20,24 +20,34 @@ html
     = javascript_importmap_tags
 
   body
-    - persona = Current.user&.personas&.order(:id)&.first if authenticated?
+    - persona = current_persona if authenticated?
 
     .app
       - if persona
         aside.side
           .brand
             span.blob: i
-            | Аватар
+            | Digital Double
 
           = button_to persona_conversations_path(persona), method: :post, class: "newchat", form: { class: "contents" } do
             | ＋ Новый чат
 
           nav.nav
             = nav_link "Библиотека", library_path, :library, "t-butter"
-            = nav_link "Контент", persona_contents_path(persona), :contents, "t-peach"
+
+          .side-title Digital Doubles
+          .recent
+            - Current.user.personas.order(:id).each do |dd|
+              = link_to dd.name, persona_contents_path(dd), class: ("on" if dd.id == persona.id)
+            = link_to "＋ Новый Digital Double", new_persona_path
+
+          .side-title = persona.name
+          nav.nav
+            = nav_link "Материалы", persona_contents_path(persona), :contents, "t-peach"
             = nav_link "Видео", persona_recordings_path(persona), :recordings, "t-lav"
             = nav_link "Темы", persona_topics_path(persona), :topics, "t-sage"
             = nav_link "Чат", persona_conversations_path(persona), :conversations, "t-sky"
+            = nav_link "Настройки", edit_persona_path(persona), :personas, "t-rose"
 
           - recent = persona.conversations.order(created_at: :desc).limit(5)
           - if recent.any?

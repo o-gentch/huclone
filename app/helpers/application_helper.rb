@@ -42,6 +42,7 @@ module ApplicationHelper
     recordings:    '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3"/>',
     topics:        '<path d="M5 5h5M5 12h5M5 19h5M14 5h5M14 12h5M14 19h5"/>',
     library:       '<path d="M4 5h4v14H4zM10 5h4v14h-4zM16 6l4 1-3 12-4-1z"/>',
+    personas:      '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
     conversations: '<path d="M4 5h16v11H9l-5 4z"/>'
   }.freeze
 

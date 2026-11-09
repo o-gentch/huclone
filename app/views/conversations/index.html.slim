@@ -5,20 +5,24 @@
     .tile.t-sky = section_icon(:conversations)
     div
       h1 Разговоры
-      .sub Беседы с вашим аватаром
+      .sub Беседы с вашим Digital Double
   = button_to "＋ Новый разговор", persona_conversations_path(@persona), method: :post, class: "btn btn-primary", form: { class: "contents" }
 
 - if @conversations.empty?
   .empty
     .tile.t-sky = section_icon(:conversations)
     p Нет разговоров
-    p.sub Начните первый разговор с аватаром
+    p.sub Начните первый разговор с Digital Double
 - else
   - @conversations.each do |conversation|
-    = link_to persona_conversation_path(@persona, conversation), class: "card row row-link" do
-      .grow
+    .card.row
+      = link_to persona_conversation_path(@persona, conversation), class: "grow min-w-0" do
         .row-title = conversation_title(conversation)
         - last = conversation.messages.order(:created_at).last
         - if last
           .row-meta.truncate = last.body.to_s.truncate(70)
       span.row-meta = conversation.created_at.strftime("%d.%m.%Y %H:%M")
+      = button_to persona_conversation_path(@persona, conversation), method: :delete, class: "x", title: "Удалить чат",
+          data: { turbo_confirm: "Удалить этот чат?" }, form: { class: "contents" } do
+        svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+          path d="M6 18L18 6M6 6l12 12"

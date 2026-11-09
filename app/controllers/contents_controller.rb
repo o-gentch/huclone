@@ -53,6 +53,25 @@ class ContentsController < ApplicationController
     redirect_to persona_contents_path(@persona), notice: "Удалено"
   end
 
+  # Повтор обработки упавшего материала
+  def retry
+    content = @persona.contents.find(params[:id])
+    if content.failed?
+      content.update!(status: "pending")
+      ProcessContentJob.perform_later(content.id)
+      redirect_to persona_contents_path(@persona), notice: "Отправлено на повторную обработку"
+    else
+      redirect_to persona_contents_path(@persona)
+    end
+  end
+
+  # Ручная отметка эталона: образец голоса для написания постов
+  def toggle_exemplar
+    link = @persona.persona_contents.find_by!(content_id: params[:id])
+    link.update!(is_exemplar: !link.is_exemplar, exemplar_pinned: true)
+    redirect_to persona_contents_path(@persona)
+  end
+
   private
 
   def set_persona

@@ -1,23 +1,23 @@
-= content_for :title, "Создать аватара"
+= content_for :title, "Создать Digital Double"
 = content_for :narrow, true
 
 .text-center.mb-8
   .blob.blob-lg.mx-auto.mb-4: i
-  h1 Создать аватара
+  h1 Создать Digital Double
 
 = form_with model: @persona do |f|
   - if @persona.errors.any?
     .alert.alert-err = @persona.errors.full_messages.first
 
   .field
-    = f.label :name, "Имя аватара", class: "label"
+    = f.label :name, "Имя Digital Double", class: "label"
     = f.text_field :name, placeholder: "Например: Марина", class: "inp", autofocus: true
 
   .field
     = f.label :system_prompt, class: "label" do
       | Описание
       small  (необязательно)
-    = f.text_area :system_prompt, placeholder: "Кто этот аватар? Как он должен отвечать?", rows: 4, class: "inp"
-    p.hint Можно оставить пустым — аватар сам построит свою карту личности из загруженных текстов.
+    = f.text_area :system_prompt, placeholder: "Кто это? Какую роль играет и как отвечает?", rows: 4, class: "inp"
+    p.hint Можно оставить пустым — Digital Double сам построит портрет из загруженных текстов.
 
   = f.submit "Создать и добавить тексты →", class: "btn btn-primary btn-block"

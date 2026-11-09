@@ -3,9 +3,6 @@ class ConversationsController < ApplicationController
 
   def index
     @conversations = @persona.conversations.order(created_at: :desc)
-    if @conversations.one?
-      redirect_to persona_conversation_path(@persona, @conversations.first)
-    end
   end
 
   def show
@@ -16,6 +13,11 @@ class ConversationsController < ApplicationController
   def create
     @conversation = @persona.conversations.create!
     redirect_to persona_conversation_path(@persona, @conversation)
+  end
+
+  def destroy
+    @persona.conversations.find(params[:id]).destroy
+    redirect_to persona_conversations_path(@persona), notice: "Чат удалён"
   end
 
   private
