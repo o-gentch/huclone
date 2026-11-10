@@ -2,10 +2,10 @@ doctype html
 html
   head
     title
-      = content_for?(:title) ? yield(:title) : "Huclone"
+      = content_for?(:title) ? yield(:title) : "Digital Double"
     meta name="viewport" content="width=device-width,initial-scale=1"
     meta name="apple-mobile-web-app-capable" content="yes"
-    meta name="application-name" content="Huclone"
+    meta name="application-name" content="Digital Double"
     meta name="mobile-web-app-capable" content="yes"
     = csrf_meta_tags
     = csp_meta_tag
@@ -13,32 +13,77 @@ html
     link rel="icon" href="/icon.png" type="image/png"
     link rel="icon" href="/icon.svg" type="image/svg+xml"
     link rel="apple-touch-icon" href="/icon.png"
+    link rel="preconnect" href="https://fonts.googleapis.com"
+    link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=true
+    link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap"
     = stylesheet_link_tag :app, "data-turbo-track": "reload"
     = javascript_importmap_tags
 
-  body class="bg-gray-50 min-h-screen"
-    nav class="fixed top-0 left-0 right-0 z-10 bg-white border-b border-gray-200"
-      .max-w-3xl.mx-auto.px-5.h-14.flex.items-center.justify-between
-        span class="font-semibold text-gray-900" Аватар
-        - if authenticated? && (persona = Current.user.personas.order(:id).first)
-          .flex.items-center.gap-1
-            = link_to "Контент", persona_contents_path(persona),
-                class: "text-sm px-3 py-1.5 rounded-lg transition-colors #{controller_name == 'contents' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-900'}"
-            = link_to "Видео", persona_recordings_path(persona),
-                class: "text-sm px-3 py-1.5 rounded-lg transition-colors #{controller_name == 'recordings' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-900'}"
-            = link_to "Темы", persona_topics_path(persona),
-                class: "text-sm px-3 py-1.5 rounded-lg transition-colors #{controller_name == 'topics' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-900'}"
-            = link_to "Чат", persona_conversations_path(persona),
-                class: "text-sm px-3 py-1.5 rounded-lg transition-colors #{controller_name == 'conversations' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-900'}"
-        - if authenticated?
-          = button_to "Выйти", session_path, method: :delete,
-              class: "text-sm text-gray-500 hover:text-gray-900 cursor-pointer"
+  body
+    - persona = current_persona if authenticated?
 
-    main class="max-w-3xl mx-auto px-5 pt-20 pb-10"
-      - if notice.present?
-        .mb-5.bg-green-50.border.border-green-200.text-green-700.text-sm.rounded-xl.px-4.py-3
-          = notice
-      - if alert.present?
-        .mb-5.bg-red-50.border.border-red-200.text-red-700.text-sm.rounded-xl.px-4.py-3
-          = alert
-      = yield
+    .app
+      - if persona
+        aside.side
+          .brand Digital Double
+
+          nav.snav
+            = button_to persona_conversations_path(persona), method: :post, class: "srow srow-strong w-full", form: { class: "contents" } do
+              = side_icon(:plus)
+              span Новый чат
+              small.srow-hint = persona.name
+            = side_link "Библиотека", library_path, :library
+
+          details.sgroup open=true
+            summary Персоны
+            - Current.user.personas.order(:id).each do |dd|
+              - active = dd.id == persona.id
+              = link_to persona_contents_path(dd), class: "srow srow-persona #{'on' if active}" do
+                span.sava = dd.name.to_s.first.to_s.upcase
+                span.truncate = dd.name
+              - if active
+                .schild
+                  = side_link "Материалы", persona_contents_path(dd), :contents, child: true
+                  = side_link "Темы", persona_topics_path(dd), :topics, child: true
+                  = side_link "Чат", persona_conversations_path(dd), :conversations, child: true
+                  = side_link "Настройки", edit_persona_path(dd), :personas, child: true
+            = link_to new_persona_path, class: "srow srow-muted newp" do
+              = side_icon(:plus)
+              span Новая персона
+
+          - recent = persona.conversations.order(created_at: :desc).limit(8)
+          - if recent.any?
+            details.sgroup.recent-block open=true
+              summary Недавние чаты
+              - recent.each do |conversation|
+                = link_to conversation_title(conversation), persona_conversation_path(persona, conversation),
+                    class: "srow srow-chat #{'on' if params[:id].to_s == conversation.id.to_s && controller_name == 'conversations'}"
+
+          .spacer.flex-1
+
+          .me
+            .ava = Current.user.email_address.to_s.first.to_s.upcase
+            .me-text.min-w-0.flex-1
+              b.block.font-semibold.leading-tight.truncate = Current.user.email_address.to_s.split("@").first
+              - remaining = Recordings::Quota.remaining_minutes(Current.user)
+              small.text-muted.text-xs Осталось #{remaining.floor} мин
+              .quota
+                i style="width: #{[ (remaining / Recordings::Quota.limit_minutes * 100).round, 100 ].min}%"
+            = button_to session_path, method: :delete, class: "logout", title: "Выйти", form: { class: "contents" } do
+              svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+
+      main.main
+        - if content_for?(:bare)
+          - if notice.present?
+            .alert.alert-ok.flash-bare = notice
+          - if alert.present?
+            .alert.alert-err.flash-bare = alert
+          = yield
+        - else
+          div class=(content_for?(:narrow) ? "wrap-narrow" : "wrap")
+            - if notice.present?
+              .alert.alert-ok = notice
+            - if alert.present?
+              .alert.alert-err = alert
+            = yield

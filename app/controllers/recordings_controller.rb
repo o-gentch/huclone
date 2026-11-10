@@ -1,18 +1,17 @@
 class RecordingsController < ApplicationController
+  include StreamsAudio
+
   before_action :set_persona
   before_action :set_recording, only: %i[show destroy retry reprocess confirm audio]
 
-  def index
-    @recordings = @persona.recordings.for_list.order(created_at: :desc)
-  end
-
   def new
-    @recording = @persona.recordings.new
+    @recording = Recording.new
   end
 
   def create
-    @recording = @persona.recordings.new(title: recording_params[:title], expected_speakers: recording_params[:expected_speakers].presence)
-    blob = ActiveStorage::Blob.find_signed(recording_params[:source_file])
+    @recording = Current.user.recordings.new(title: recording_params[:title], expected_speakers: recording_params[:expected_speakers].presence)
+    signed_id = recording_params[:source_file]
+    blob = signed_id.is_a?(String) ? ActiveStorage::Blob.find_signed(signed_id) : nil
 
     if (error = upload_error(blob))
       @recording.errors.add(:base, error)
@@ -22,15 +21,15 @@ class RecordingsController < ApplicationController
     @recording.title = @recording.title.presence || blob.filename.base.to_s.truncate(120)
     @recording.source_checksum = blob.checksum
 
-    if duplicate?(blob) && params[:force].blank?
-      @recording.errors.add(:base, "Такая запись уже загружена. Если это не ошибка — нажмите «Всё равно загрузить»")
-      @duplicate = true
-      @signed_blob_id = recording_params[:source_file]
-      return render :new, status: :unprocessable_entity
+    if (existing = Current.user.recordings.find_by(source_checksum: blob.checksum))
+      PersonaRecordings::Connect.call(@persona, existing)
+      return redirect_to persona_recording_path(@persona, existing),
+                         notice: "Такая запись уже в библиотеке — подключена к «#{@persona.name}», повторная расшифровка не нужна"
     end
 
     @recording.source_file.attach(blob)
     if @recording.save
+      PersonaRecordings::Connect.call(@persona, @recording)
       ExtractAudioJob.perform_later(@recording.id)
       redirect_to persona_recording_path(@persona, @recording), notice: "Файл загружен и отправлен на обработку"
     else
@@ -40,12 +39,15 @@ class RecordingsController < ApplicationController
 
   def show
     @speakers = @recording.speakers.to_a
+    others = PersonaRecording.where(recording_id: @recording.id).where.not(persona_id: @persona.id).includes(:persona)
+    @other_choices = others.flat_map { |pr| pr.speaker_ids.map { |sid| [ sid, pr.persona.name ] } }.group_by(&:first).transform_values { |v| v.map(&:last) }
     @utterances = @recording.utterances.to_a if @speakers.any?
   end
 
   def destroy
-    @recording.destroy
-    redirect_to persona_recordings_path(@persona), notice: "Запись удалена"
+    @persona_recording.destroy
+    @recording.destroy if @recording.persona_recordings.reload.none? # без экрана библиотеки осиротевшая запись не нужна
+    redirect_to persona_contents_path(@persona), notice: "Запись удалена"
   end
 
   def retry
@@ -59,7 +61,7 @@ class RecordingsController < ApplicationController
 
   def reprocess
     count = params[:expected_speakers].to_i
-    unless @recording.awaiting_speaker_confirmation? && (1..10).cover?(count)
+    unless @recording.transcribed? && (1..10).cover?(count)
       return redirect_to persona_recording_path(@persona, @recording), alert: "Укажите число говорящих от 1 до 10"
     end
 
@@ -68,32 +70,19 @@ class RecordingsController < ApplicationController
   end
 
   def confirm
-    speaker_id = params[:speaker_id] == "none" ? nil : params[:speaker_id]
-    Recordings::Confirm.call(@recording, speaker_id: speaker_id, names: params[:names]&.to_unsafe_h)
+    ids = params[:none].present? ? [] : Array(params[:speaker_ids]).compact_blank
+    if ids.empty? && params[:none].blank?
+      return redirect_to persona_recording_path(@persona, @recording), alert: "Отметьте говорящих или выберите «Этого человека нет в записи»"
+    end
+
+    PersonaRecordings::SelectSpeakers.call(@persona_recording, speaker_ids: ids, names: params[:names]&.to_unsafe_h)
     redirect_to persona_recording_path(@persona, @recording),
-                notice: speaker_id ? "Спикер подтверждён" : "Запись сохранена без вашего голоса"
-  rescue Recordings::Confirm::Invalid => e
+                notice: ids.any? ? "Спикеры сохранены" : "Запись сохранена без «#{@persona.name}»"
+  rescue PersonaRecordings::SelectSpeakers::Invalid => e
     redirect_to persona_recording_path(@persona, @recording), alert: e.message
   end
 
-  # Аудио отдаётся только владельцу, с поддержкой Range (перемотка в <audio>)
-  def audio
-    return head(:not_found) unless @recording.audio_file.attached?
-
-    blob = @recording.audio_file.blob
-    total = blob.byte_size
-    range = parse_range(request.headers["Range"], total)
-
-    response.headers["Accept-Ranges"] = "bytes"
-    response.headers["Cache-Control"] = "private, max-age=3600"
-    if range
-      data = blob.service.download_chunk(blob.key, range)
-      response.headers["Content-Range"] = "bytes #{range.begin}-#{range.end}/#{total}"
-      send_data data, type: blob.content_type, disposition: "inline", status: :partial_content
-    else
-      send_data blob.download, type: blob.content_type, disposition: "inline"
-    end
-  end
+  def audio = stream_audio(@recording)
 
   private
 
@@ -103,6 +92,7 @@ class RecordingsController < ApplicationController
 
   def set_recording
     @recording = @persona.recordings.find(params[:id])
+    @persona_recording = @persona.persona_recordings.find_by!(recording_id: @recording.id)
   end
 
   def recording_params
@@ -119,21 +109,5 @@ class RecordingsController < ApplicationController
       return "Месячная квота распознавания исчерпана"
     end
     nil
-  end
-
-  def duplicate?(blob)
-    @persona.recordings.where(source_checksum: blob.checksum).exists?
-  end
-
-  def parse_range(header, total)
-    m = header.to_s.match(/\Abytes=(\d*)-(\d*)\z/)
-    return unless m && (m[1].present? || m[2].present?)
-
-    first, last = if m[1].empty?
-      [ [ total - m[2].to_i, 0 ].max, total - 1 ]
-    else
-      [ m[1].to_i, m[2].present? ? [ m[2].to_i, total - 1 ].min : total - 1 ]
-    end
-    first <= last && first < total ? (first..last) : nil
   end
 end

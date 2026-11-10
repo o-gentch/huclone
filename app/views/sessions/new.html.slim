@@ -1,17 +1,15 @@
 = content_for :title, "Вход"
+= content_for :bare, true
 
-.max-w-sm.mx-auto.mt-16
-  h1 class="text-2xl font-semibold text-gray-900 mb-6" Вход
+.center
+  .hero
+    .blob.blob-lg: i
+    h1 С возвращением
+    p Войдите, чтобы продолжить работу с персоной
 
-  - if flash[:alert]
-    .mb-4.bg-red-50.border.border-red-200.text-red-700.text-sm.rounded-xl.px-4.py-3 = flash[:alert]
-
-  = form_with url: session_path, class: "space-y-3" do |form|
-    = form.email_field :email_address, required: true, autofocus: true, autocomplete: "username",
-        placeholder: "Email", value: params[:email_address],
-        class: "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white"
-    = form.password_field :password, required: true, autocomplete: "current-password",
-        placeholder: "Пароль", maxlength: 72,
-        class: "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white"
-    = form.submit "Войти",
-        class: "w-full bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-gray-700 cursor-pointer"
+    = form_with url: session_path, class: "stack" do |form|
+      = form.email_field :email_address, required: true, autofocus: true, autocomplete: "username",
+          placeholder: "Email", value: params[:email_address], class: "inp"
+      = form.password_field :password, required: true, autocomplete: "current-password",
+          placeholder: "Пароль", maxlength: 72, class: "inp"
+      = form.submit "Войти", class: "btn btn-primary btn-block"

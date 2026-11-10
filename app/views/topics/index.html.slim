@@ -1,19 +1,21 @@
 = content_for :title, "Темы"
 
-.w-full.max-w-3xl.mx-auto
-  .flex.items-center.justify-between.mb-8
-    h1 class="text-2xl font-semibold text-gray-900" Темы
-    - if @tree.any?
-      .flex.items-center.gap-2
-        = button_to "Пересобрать", rebuild_persona_topics_path(@persona), data: { turbo_confirm: "Дерево будет построено заново, названия могут измениться. Продолжить?" },
-            class: "text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer"
-        = link_to "Экспорт в Markdown", export_persona_topics_path(@persona),
-            class: "bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+.page-head
+  .page-head-l
+    .tile.t-sage = section_icon(:topics)
+    div
+      h1 Темы
+      .sub Дерево тем из ваших выступлений
+  - if @tree.any?
+    .flex.items-center.gap-2
+      = button_to "Пересобрать", rebuild_persona_topics_path(@persona), class: "btn", form: { class: "contents" },
+          data: { turbo_confirm: "Дерево будет построено заново, названия могут измениться. Продолжить?" }
+      = link_to "Экспорт в Markdown", export_persona_topics_path(@persona), class: "btn btn-primary"
 
-  - if @tree.empty?
-    .text-center.py-20.text-gray-400
-      p class="text-lg" Тем пока нет
-      p class="text-sm mt-1" Они появятся после того, как вы загрузите и подтвердите записи выступлений
-  - else
-    .space-y-4
-      = render "topics/node", nodes: @tree, persona: @persona, prefix: ""
+- if @tree.empty?
+  .empty
+    .tile.t-sage = section_icon(:topics)
+    p Тем пока нет
+    p.sub Они появятся после того, как вы загрузите и подтвердите записи выступлений
+- else
+  = render "topics/node", nodes: @tree, persona: @persona, prefix: ""

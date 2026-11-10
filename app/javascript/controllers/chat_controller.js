@@ -41,6 +41,17 @@ export default class extends Controller {
     }
   }
 
+  // Клик по подсказке на пустом экране: подставляет текст и режим
+  fill(event) {
+    const { text, mode } = event.params
+    if (!this.hasInputTarget) return
+    this.inputTarget.value = text
+    const radio = document.getElementById(`mode_${mode}`)
+    if (radio) radio.checked = true
+    this.inputTarget.focus()
+    this.inputTarget.setSelectionRange(text.length, text.length)
+  }
+
   onInput(event) {
     const el = event.target
     el.style.height = "auto"
@@ -63,23 +74,16 @@ export default class extends Controller {
 
   buildUserBubble(content) {
     return `
-      <div class="flex justify-end">
-        <div class="max-w-lg bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed">
-          ${this.escapeHtml(content).replace(/\n/g, "<br>")}
-        </div>
+      <div class="msg-u">
+        <div>${this.escapeHtml(content).replace(/\n/g, "<br>")}</div>
       </div>`
   }
 
   buildThinkingIndicator() {
     return `
-      <div id="thinking-indicator" class="flex">
-        <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3">
-          <div class="flex items-center gap-1">
-            <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
-            <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
-            <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
-          </div>
-        </div>
+      <div id="thinking-indicator" class="msg-a">
+        <span class="blob blob-sm"><i></i></span>
+        <div class="msg-body"><span class="typing"><i></i><i></i><i></i></span></div>
       </div>`
   }
 

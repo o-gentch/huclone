@@ -1,9 +1,10 @@
 require "test_helper"
 
-class Recordings::SaveAndConfirmTest < ActiveSupport::TestCase
+class Recordings::SaveAndConfirmTest < ActiveJob::TestCase
   setup do
     @persona = users(:one).personas.create!(name: "P")
     @recording = create_recording(@persona, status: "transcribing", audio: true)
+    @link = @persona.persona_recordings.first
     @result = Transcription::Fake.new.fetch("x")
   end
 
@@ -11,7 +12,8 @@ class Recordings::SaveAndConfirmTest < ActiveSupport::TestCase
     2.times { Recordings::SaveTranscript.call(@recording, @result) }
     @recording.reload
 
-    assert @recording.awaiting_speaker_confirmation?
+    assert @recording.transcribed?
+    assert @link.reload.needs_speakers?
     assert_equal 2, @recording.speakers.count
     assert_equal 4, @recording.utterances.count # две реплики A склеены
     top = @recording.speakers.max_by(&:speech_ms)
@@ -19,34 +21,30 @@ class Recordings::SaveAndConfirmTest < ActiveSupport::TestCase
     assert_operator top.words_count, :>, 0
   end
 
-  test "confirm marks exactly one persona speaker and moves to confirmed" do
+  test "select speakers stores several speakers and names" do
     Recordings::SaveTranscript.call(@recording, @result)
-    me = @recording.speakers.find_by(label: "B")
-    called = []
-    Recordings::Pipeline.after_confirm_handler = ->(r) { called << r.id }
+    a, b = @recording.speakers.order(:label).to_a
 
-    Recordings::Confirm.call(@recording, speaker_id: me.id, names: { me.id.to_s => "Я" })
+    assert_enqueued_jobs 2, only: BuildSpeakerSpeechJob do
+      PersonaRecordings::SelectSpeakers.call(@link, speaker_ids: [ a.id, b.id ], names: { b.id.to_s => "Я" })
+    end
 
-    assert @recording.reload.confirmed?
-    assert_equal [ me.id ], @recording.speakers.where(is_persona: true).pluck(:id)
-    assert_equal "Я", me.reload.display_name
-    assert_equal [ @recording.id ], called
-  ensure
-    Recordings::Pipeline.after_confirm_handler = nil
+    assert @link.reload.ready?
+    assert_equal [ a.id, b.id ].sort, @link.speaker_ids
+    assert_equal "Я", b.reload.display_name
   end
 
-  test "confirm with none leaves no persona speaker" do
+  test "none means the person is not in the recording" do
     Recordings::SaveTranscript.call(@recording, @result)
-    Recordings::Confirm.call(@recording, speaker_id: nil)
-    assert @recording.reload.confirmed?
-    assert_equal 0, @recording.speakers.where(is_persona: true).count
+    PersonaRecordings::SelectSpeakers.call(@link, speaker_ids: [])
+    assert @link.reload.ready?
+    assert_empty @link.speaker_ids
   end
 
-  test "confirm rejects a foreign speaker id and wrong status" do
+  test "rejects a foreign speaker id and an untranscribed recording" do
+    assert_raises(PersonaRecordings::SelectSpeakers::Invalid) { PersonaRecordings::SelectSpeakers.call(@link, speaker_ids: [ 1 ]) }
     Recordings::SaveTranscript.call(@recording, @result)
-    assert_raises(Recordings::Confirm::Invalid) { Recordings::Confirm.call(@recording, speaker_id: 0) }
-    Recordings::Confirm.call(@recording, speaker_id: nil)
-    assert_raises(Recordings::Confirm::Invalid) { Recordings::Confirm.call(@recording, speaker_id: nil) }
+    assert_raises(PersonaRecordings::SelectSpeakers::Invalid) { PersonaRecordings::SelectSpeakers.call(@link.reload, speaker_ids: [ 0 ]) }
   end
 
   test "empty transcript is a permanent error" do

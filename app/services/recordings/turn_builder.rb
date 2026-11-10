@@ -16,14 +16,14 @@ module Recordings
 
     def self.call(...) = new(...).call
 
-    def initialize(recording, min_confidence: MIN_CONFIDENCE)
+    def initialize(recording, speaker:, min_confidence: MIN_CONFIDENCE)
       @recording = recording
+      @speaker = speaker
       @min_confidence = min_confidence
     end
 
     def call
-      persona_speaker = @recording.persona_speaker
-      return [] unless persona_speaker
+      persona_speaker = @speaker
 
       utterances = @recording.utterances.includes(:speaker).to_a
       turns = []

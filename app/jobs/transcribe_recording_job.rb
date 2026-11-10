@@ -46,17 +46,15 @@ class TranscribeRecordingJob < ApplicationJob
     end
 
     minutes = recording.duration_ms.to_f / 60_000
-    user = recording.persona.user
-    Recordings::Quota.check!(user, minutes) if user
+    user = recording.user
+    Recordings::Quota.check!(user, minutes)
 
     job_id = recording.audio_file.blob.open do |file|
       provider.submit(file, expected_speakers: recording.expected_speakers, language: recording.language)
     end
     recording.update!(provider: provider.name, provider_job_id: job_id)
-    if user
-      Recordings::Quota.record!(user: user, recording: recording, minutes: minutes,
-                                cost_usd: minutes / 60 * provider.cost_per_hour_usd)
-    end
+    Recordings::Quota.record!(user: user, recording: recording, minutes: minutes,
+                              cost_usd: minutes / 60 * provider.cost_per_hour_usd)
     true
   rescue Recordings::QuotaExceeded => e
     recording.fail!(e.message)

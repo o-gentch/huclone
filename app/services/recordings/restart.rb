@@ -21,6 +21,12 @@ module Recordings
       raise ArgumentError, "Нужно аудио" unless recording.audio_file.attached?
 
       Recording.transaction do
+        # Спикеры будут созданы заново — выбор у всех персон сбрасывается
+        recording.persona_recordings.each do |pr|
+          Personas::RemoveContents.call(pr.persona, pr.persona_contents.pluck(:content_id))
+          pr.update!(speaker_ids: [], status: "needs_speakers", summary: nil)
+        end
+        recording.contents.destroy_all
         recording.utterances.delete_all
         recording.speakers.delete_all
         recording.update!(expected_speakers: count, provider_job_id: nil)

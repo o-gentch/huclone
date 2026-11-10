@@ -1,51 +1,43 @@
 = content_for :title, "Загрузить запись"
+= content_for :narrow, true
 
-.w-full.max-w-2xl.mx-auto
-  .mb-8
-    = link_to "← Назад", persona_recordings_path(@persona), class: "text-sm text-gray-400 hover:text-gray-600 transition-colors"
-    h1 class="text-2xl font-semibold text-gray-900 mt-3" Загрузить запись
+= link_to "← Назад", persona_contents_path(@persona), class: "back"
+h1.mt-3.mb-8 Загрузить запись
 
-  = form_with url: persona_recordings_path(@persona), multipart: true, class: "space-y-5",
-      data: { controller: "upload", action: "direct-upload:start->upload#start direct-upload:progress->upload#progress direct-upload:end->upload#end direct-upload:error->upload#error" } do |f|
-    - if @recording.errors.any?
-      .bg-red-50.border.border-red-200.text-red-700.text-sm.rounded-xl.px-4.py-3
-        = @recording.errors.full_messages.first
-        - if @duplicate
-          = hidden_field_tag "force", "1"
-          = hidden_field_tag "recording[source_file]", @signed_blob_id
-          = hidden_field_tag "recording[title]", @recording.title
+= form_with url: persona_recordings_path(@persona), multipart: true,
+    data: { controller: "upload", action: "direct-upload:start->upload#start direct-upload:progress->upload#progress direct-upload:end->upload#end direct-upload:error->upload#error" } do |f|
+  - if @recording.errors.any?
+    .alert.alert-err
+      = @recording.errors.full_messages.first
 
-    div
-      label class="block text-sm font-medium text-gray-700 mb-1.5"
-        | Название
-        span class="text-gray-400 font-normal"  (необязательно)
-      = text_field_tag "recording[title]", @recording.title,
-          placeholder: "Например: Выступление на конференции",
-          class: "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+  .field
+    label.label
+      | Название
+      small  (необязательно)
+    = text_field_tag "recording[title]", @recording.title, placeholder: "Например: Выступление на конференции", class: "inp"
 
-    div
-      label class="block text-sm font-medium text-gray-700 mb-1.5" Файл
-      = file_field_tag "recording[source_file]", direct_upload: true,
-          accept: "video/*,audio/*", data: { upload_target: "input" },
-          class: "w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
-      p class="text-xs text-gray-400 mt-1.5"
+  .field
+    label.label Файл
+    .drop
+      = file_field_tag "recording[source_file]",
+          accept: "video/*,audio/*", data: { upload_target: "input", direct_upload_url: rails_direct_uploads_url },
+          class: "file"
+      p.hint
         | mp4, mov, webm, mkv, mp3, m4a, wav, ogg. До #{Recording.max_upload_label}, не длиннее 3 часов.
         - if Recording.local_storage?
           |  Файлы хранятся на диске сервера, поэтому размер ограничен.
-      p class="text-xs text-gray-400 mt-1" Осталось в этом месяце: #{Recordings::Quota.remaining_minutes(Current.user).floor} мин
-
-    div
-      label class="block text-sm font-medium text-gray-700 mb-1.5"
-        | Сколько людей говорит в записи
-        span class="text-gray-400 font-normal"  (необязательно)
-      = number_field_tag "recording[expected_speakers]", @recording.expected_speakers, min: 1, max: 10,
-          class: "w-32 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-      p class="text-xs text-gray-400 mt-1" Помогает точнее разделить голоса
-
+      p.hint Осталось в этом месяце: #{Recordings::Quota.remaining_minutes(Current.user).floor} мин
     div class="hidden" data-upload-target="progressWrap"
-      .h-2.bg-gray-100.rounded-full.overflow-hidden
-        div class="h-2 bg-gray-900 transition-all" style="width: 0%" data-upload-target="bar"
-      p class="text-xs text-gray-500 mt-1.5" data-upload-target="label" Загрузка…
+      .progress
+        div style="width: 0%" data-upload-target="bar"
+      p.hint data-upload-target="label" Загрузка…
 
-    = submit_tag(@duplicate ? "Всё равно загрузить" : "Загрузить", data: { upload_target: "submit", disable_with: false },
-        class: "bg-gray-900 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-gray-700 transition-colors cursor-pointer")
+  .field
+    label.label
+      | Сколько людей говорит в записи
+      small  (необязательно)
+    = number_field_tag "recording[expected_speakers]", @recording.expected_speakers, min: 1, max: 10, class: "inp w-28!"
+    p.hint Помогает точнее разделить голоса
+
+  = submit_tag("Загрузить", data: { upload_target: "submit", disable_with: false },
+      class: "btn btn-primary")

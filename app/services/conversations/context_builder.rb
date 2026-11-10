@@ -22,6 +22,19 @@ module Conversations
       Можешь выходить за рамки загруженных текстов, но думай и пиши строго в стиле автора.
     PROMPT
 
+    # Режим «Идеи»: сначала коротко то, что автор уже говорил, затем — новое и расширенное.
+    # Маркеры разбирает Conversations::BodyRenderer (первый блок показывается свёрнутым).
+    IDEAS_SPLIT_INSTRUCTION = <<~PROMPT.freeze
+      Формат ответа в этом режиме — строго с маркерами на отдельных строках:
+      [[МАТЕРИАЛЫ]]
+      2–4 предложения: коротко, что автор уже говорил по теме в приведённых фрагментах, со ссылками на источник в скобках.
+      [[НОВОЕ]]
+      Основная часть: новая информация, другие углы, расширение и уточнение сказанного автором.
+      Без ссылок на источники; не повторяй то, что уже изложено в блоке материалов.
+      Если подходящих фрагментов нет — не пиши [[МАТЕРИАЛЫ]], начни сразу с [[НОВОЕ]]. Не выдавай общие знания за слова автора
+      и не ссылайся на фрагменты, которые не использовал.
+    PROMPT
+
     EXEMPLAR_MAX_CHARS = 3_000
 
     INTENT_INSTRUCTIONS = {
@@ -70,6 +83,7 @@ module Conversations
     def build_system
       [
         BASE_INSTRUCTION,
+        instructions_section,
         personality_section,
         linguistics_section,
         exemplars_section,
@@ -106,6 +120,11 @@ module Conversations
       [ "## Карта личности автора\n#{map.to_json}", voice ].compact.join("\n\n")
     end
 
+    def instructions_section
+      text = @persona.system_prompt.to_s.strip
+      "## Инструкции владельца (роль и поведение)\n#{text.truncate(2_000)}" if text.present?
+    end
+
     def written_voice? = @intent == "write_post"
 
     def linguistics_section
@@ -128,7 +147,7 @@ module Conversations
     def exemplars_section
       return nil unless @intent == "write_post"
 
-      exemplars = @persona.contents.posts.exemplars.limit(3)
+      exemplars = @persona.contents.posts.merge(PersonaContent.exemplars).limit(3)
       return nil if exemplars.empty?
 
       posts = exemplars.map.with_index(1) { |c, i| "### Пост #{i}\n#{c.body.truncate(EXEMPLAR_MAX_CHARS)}" }.join("\n\n")
@@ -136,7 +155,10 @@ module Conversations
     end
 
     def mode_section
-      @mode == "ideas" ? IDEAS_INSTRUCTION : STRICT_INSTRUCTION
+      return STRICT_INSTRUCTION unless @mode == "ideas"
+
+      split = %w[answer_question structure_knowledge casual_chat].include?(@intent)
+      split ? [ IDEAS_INSTRUCTION, IDEAS_SPLIT_INSTRUCTION ].join("\n") : IDEAS_INSTRUCTION
     end
 
     def intent_section

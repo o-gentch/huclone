@@ -8,7 +8,9 @@ module RecordingTestHelper
   end
 
   def create_recording(persona, status: "uploaded", audio: false, source: false, **attrs)
-    recording = persona.recordings.create!({ title: "Тест", status: status, duration_ms: 120_000 }.merge(attrs))
+    status = "transcribed" if status == "confirmed" || status == "awaiting_speaker_confirmation"
+    recording = persona.user.recordings.create!({ title: "Тест", status: status, duration_ms: 120_000 }.merge(attrs))
+    PersonaRecordings::Connect.call(persona, recording)
     recording.audio_file.attach(io: StringIO.new(wav_data), filename: "a.wav", content_type: "audio/wav") if audio
     recording.source_file.attach(io: StringIO.new(wav_data), filename: "s.wav", content_type: "audio/wav") if source
     recording

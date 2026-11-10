@@ -1,0 +1,96 @@
+= content_for :title, "Библиотека"
+
+.page-head
+  .page-head-l
+    .tile.t-butter = section_icon(:library)
+    div
+      h1 Библиотека
+      .sub Все материалы: расшифровываются один раз, подключаются к любой персоне
+  .flex.items-center.gap-2
+    = link_to "Импорт из Telegram", new_persona_telegram_import_path(@personas.first), class: "btn"
+    = link_to "＋ Видео", new_persona_recording_path(@personas.first), class: "btn"
+    = link_to "＋ Текст", new_persona_content_path(@personas.first), class: "btn btn-primary"
+
+- active_filters = @filters.except(:q).size
+= form_with url: library_path, method: :get, class: "lib-filter" do
+  input#filters-toggle.sr-only type="checkbox" checked=(active_filters.positive?)
+  .lib-bar
+    .lib-search
+      svg.sico viewBox="0 0 24 24"
+        circle cx="11" cy="11" r="6"
+        path d="M20 20l-4-4"
+      = search_field_tag :q, @filters[:q], placeholder: "Поиск по названию и тексту", class: "lib-input"
+    label.filter-btn for="filters-toggle"
+      svg.sico viewBox="0 0 24 24"
+        path d="M4 6h16M7 12h10M10 18h4"
+      | Фильтры
+      - if active_filters.positive?
+        span.filter-count = active_filters
+    = submit_tag "Найти", name: nil, class: "btn btn-primary"
+
+  .filter-panel
+    .filter-row
+      = select_tag :type, options_for_select([ [ "Видео и посты", "" ], [ "Только видео", "video" ], [ "Только посты", "post" ] ], @filters[:type]), class: "inp w-auto!"
+      = select_tag :status, options_for_select([ [ "Любой статус", "" ], [ "Готово", "ready" ], [ "В обработке", "processing" ], [ "Ошибка", "failed" ] ], @filters[:status]), class: "inp w-auto!"
+      = select_tag :dd, options_for_select([ [ "Любая персона", "" ], [ "Никуда не подключено", "none" ] ] + @personas.map { |p| [ "Не подключено к «#{p.name}»", "not:#{p.id}" ] } + @personas.map { |p| [ "Подключено к «#{p.name}»", p.id ] }, @filters[:dd]), class: "inp w-auto!"
+      = hidden_field_tag :source, @filters[:source]
+      - if active_filters.positive?
+        = link_to "Сбросить", library_path(q: @filters[:q].presence), class: "filter-reset"
+    - if @facets.any?
+      .flex.gap-2.flex-wrap.mt-3
+        = link_to "Все источники", library_path(@filters.except(:source)), class: "chip #{'on' unless @filters[:source]}"
+        - @facets.each do |key, label, count|
+          = link_to "#{label} · #{count}", library_path(@filters.merge(source: key)), class: "chip #{'on' if @filters[:source] == key}"
+
+- if @items.empty?
+  .empty
+    .tile.t-butter = section_icon(:library)
+    p Ничего не найдено
+    p.sub Загрузите видео, добавьте тексты или измените фильтры
+- else
+  = form_with url: connect_library_path, method: :post, data: { controller: "library-select" } do
+    .bulk
+      label.flex.items-center.gap-2.text-sm
+        input type="checkbox" data-action="library-select#toggleAll"
+        | Выбрать все на странице
+      .grow
+      = select_tag :persona_id, options_for_select(@personas.map { |p| [ p.name, p.id ] }, @filters[:dd].to_s.delete_prefix("not:").presence || current_persona&.id), class: "inp w-auto!"
+      = select_tag :role, options_for_select([ [ "Посты: написано этим человеком", "voice" ], [ "Посты: только знания", "knowledge" ] ]), class: "inp w-auto!"
+      = submit_tag "Подключить к персоне", class: "btn btn-primary btn-sm"
+      = submit_tag "Удалить из библиотеки", formaction: delete_library_path, class: "btn btn-danger btn-sm",
+          data: { turbo_confirm: "Удалить выбранное из библиотеки? Материалы исчезнут у всех персон, это необратимо." }
+
+    - @items.each do |item|
+      - recording = item.is_a?(Recording)
+      - links = recording ? @rec_links[item.id] : @post_links[item.id]
+      .lib-row
+        = check_box_tag "items[]", "#{recording ? 'recording' : 'content'}_#{item.id}", false, id: nil, data: { library_select_target: "box" }
+        span.lib-ico class=(recording ? "t-lav" : "t-peach") = section_icon(recording ? :recordings : :contents)
+        .grow.min-w-0
+          .row-title
+            - if recording
+              = link_to item.title, library_recording_path(item)
+            - else
+              = item.title
+          .row-meta
+            = recording ? "Видео" : "Пост"
+            |  · #{item.created_at.strftime('%d.%m.%Y')}
+            - if recording && item.duration_ms
+              |  · #{item.duration_label}
+          - if recording && item.failed? && item.error_message.present?
+            .row-err = item.error_message
+        .flex.gap-1.flex-wrap.justify-end
+          - if links.blank?
+            span.chip.chip-quiet никуда не подключено
+          - else
+            - links.each do |l|
+              span.chip.chip-dd = l.persona.name
+        = status_badge(recording ? item.status : item.status)
+
+  - if @last_page > 1
+    .flex.items-center.justify-center.gap-3.mt-4.text-sm
+      - if @page > 1
+        = link_to "← Назад", library_path(@filters.merge(page: @page - 1)), class: "btn btn-sm"
+      span.text-muted Страница #{@page} из #{@last_page} · всего #{@total}
+      - if @page < @last_page
+        = link_to "Дальше →", library_path(@filters.merge(page: @page + 1)), class: "btn btn-sm"

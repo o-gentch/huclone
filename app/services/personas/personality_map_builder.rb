@@ -15,8 +15,8 @@ module Personas
     end
 
     def call
-      all_done    = Content.where(persona_id: @persona.id, status: "done").order(:id)
-      new_contents = all_done.not_in_map
+      all_done     = @persona.contents.merge(PersonaContent.voice).where(status: "done").order(:id)
+      new_contents = all_done.merge(PersonaContent.not_in_map)
 
       return if all_done.empty?
       return if new_contents.empty? && @persona.personality_map.present?
@@ -41,7 +41,7 @@ module Personas
         personality_map: personality_map,
         personality_map_built_at: Time.current
       )
-      Content.where(id: covered_ids).update_all(included_in_map: true)
+      @persona.persona_contents.where(content_id: covered_ids).update_all(included_in_map: true)
 
       Personas::ExemplarSelector.call(@persona)
     end
@@ -57,7 +57,7 @@ module Personas
         personality_map: personality_map,
         personality_map_built_at: Time.current
       )
-      Content.where(id: covered_ids).update_all(included_in_map: true)
+      @persona.persona_contents.where(content_id: covered_ids).update_all(included_in_map: true)
 
       Personas::ExemplarSelector.call(@persona)
     end

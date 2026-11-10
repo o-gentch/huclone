@@ -8,20 +8,21 @@ module Knowledge
 
     def self.call(...) = new(...).call
 
-    def initialize(recording, ai_client: Ai::Client.instance)
-      @recording = recording
+    def initialize(persona_recording, ai_client: Ai::Client.instance)
+      @persona_recording = persona_recording
+      @recording = persona_recording.recording
       @client = ai_client
     end
 
     def call
-      contents = @recording.contents.speeches.done.order(:start_ms).to_a
+      contents = @persona_recording.contents.speeches.done.order(:start_ms).to_a
       return if contents.empty?
 
       summarize_contents(contents.select { |c| c.summary.blank? })
       summaries = contents.map { |c| c.reload.summary }.compact_blank
       return if summaries.empty?
 
-      @recording.update!(summary: reduce(summaries))
+      @persona_recording.update!(summary: reduce(summaries))
     end
 
     private

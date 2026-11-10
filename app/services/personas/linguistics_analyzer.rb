@@ -12,7 +12,7 @@ module Personas
     end
 
     def call
-      done = Content.where(persona_id: @persona.id, status: "done").order(:id)
+      done = @persona.contents.merge(PersonaContent.voice).where(status: "done").order(:id)
       posts    = done.posts.to_a
       speeches = done.speeches.to_a
       return if posts.empty? && speeches.empty?

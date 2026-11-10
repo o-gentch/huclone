@@ -2,16 +2,18 @@ module Knowledge
   class SummarizeRecordingJob < ApplicationJob
     queue_as :personality_map
 
-    limits_concurrency to: 1, key: ->(recording_id) { "summarize_recording/#{recording_id}" }, duration: 30.minutes
+    limits_concurrency to: 1, key: ->(persona_recording_id) { "summarize_recording/#{persona_recording_id}" }, duration: 30.minutes
 
     retry_on OpenAI::Error, wait: :polynomially_longer, attempts: 5
     retry_on Faraday::TooManyRequestsError, wait: :polynomially_longer, attempts: 5
     discard_on ActiveJob::DeserializationError
 
-    def perform(recording_id)
-      recording = Recording.find(recording_id)
-      Knowledge::RecordingSummarizer.call(recording)
-      Knowledge::BuildTopicTreeJob.perform_later(recording.persona_id)
+    def perform(persona_recording_id)
+      pr = PersonaRecording.find(persona_recording_id)
+      return if pr.summary.present?
+
+      Knowledge::RecordingSummarizer.call(pr)
+      Knowledge::BuildTopicTreeJob.perform_later(pr.persona_id)
     end
   end
 end

@@ -20,7 +20,9 @@ module Transcription
     def submit(io, expected_speakers: nil, language: "ru")
       raise PermanentError, "Не задан ASSEMBLYAI_API_KEY" if @api_key.blank?
 
-      upload = request { conn.post("/v2/upload", io, "content-type" => "application/octet-stream") }
+      # Net::HTTP стримит IO-тело и требует Content-Length (или chunked), сам он его не вычисляет.
+      upload_headers = { "content-type" => "application/octet-stream", "content-length" => io.size.to_s }
+      upload = request { conn.post("/v2/upload", io, upload_headers) }
       body = {
         audio_url: upload.fetch("upload_url"),
         language_code: language,

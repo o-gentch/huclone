@@ -3,30 +3,29 @@ div id="message_form"
       scope: :message,
       data: { action: "turbo:submit-start->chat#onSubmit" } do |f|
 
-    .bg-white.border.border-gray-200.rounded-2xl.px-4.pt-3.pb-3
-
-      / Mode toggle
-      .flex.gap-1.mb-3
-        - Message::MODES.each do |m|
-          label class="cursor-pointer"
-            = f.radio_button :mode, m, checked: (mode == m), class: "sr-only peer", id: "mode_#{m}"
-            span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors peer-checked:bg-gray-900 peer-checked:text-white peer-checked:border-gray-900 border-gray-200 text-gray-500 hover:border-gray-300"
-              - case m
-              - when "strict"
-                | 🔒 По материалам
-              - when "ideas"
-                | 💡 Идеи
-              - else
-                | 📖 Книга
-
-      / Textarea
+    .composer
       = f.text_area :body,
-          placeholder: "Напишите сообщение...",
+          placeholder: "Напишите сообщение…",
           rows: 2,
-          class: "w-full resize-none border-none outline-none text-sm bg-transparent text-gray-900 placeholder-gray-400 leading-relaxed",
           data: { chat_target: "input", action: "keydown->chat#onKeydown input->chat#onInput" }
 
-      / Submit row
-      .flex.justify-end.mt-2
-        = f.submit "Отправить →",
-            class: "bg-gray-900 text-white text-sm font-medium px-4 py-1.5 rounded-xl hover:bg-gray-700 transition-colors cursor-pointer"
+      .composer-bar
+        span.composer-hint Enter — отправить, Shift+Enter — новая строка
+        button.send type="submit" title="Отправить"
+          svg viewBox="0 0 24 24"
+            path d="M12 19V5M5 12l7-7 7 7"
+
+    .composer-under
+      .seg
+        - Message::MODES.each do |m|
+          label
+            = f.radio_button :mode, m, checked: (mode == m), class: "sr-only", id: "mode_#{m}"
+            span
+              - case m
+              - when "strict"
+                | По материалам
+              - when "ideas"
+                | Идеи
+              - else
+                | Книга
+      span.composer-who = persona.name

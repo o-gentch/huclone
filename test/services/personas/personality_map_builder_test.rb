@@ -21,7 +21,7 @@ class Personas::PersonalityMapBuilderTest < ActiveSupport::TestCase
   setup { @persona = users(:one).personas.create!(name: "P") }
 
   def add(kind, body, **attrs)
-    @persona.contents.create!({ kind: kind, title: "t", body: body, sources: [], status: "done" }.merge(attrs))
+    add_content(@persona, **{ kind: kind, title: "t", body: body, status: "done" }.merge(attrs))
   end
 
   test "builds a map with spoken_style and sourced quotes; speech prompt carries the question" do
@@ -39,7 +39,7 @@ class Personas::PersonalityMapBuilderTest < ActiveSupport::TestCase
     assert_includes prompt, "Как вы начинали?"
     assert_includes prompt, "сырой ответ" # стиль берётся из сырого текста
     assert_not_includes prompt, "Очищенный ответ"
-    assert Content.all.all?(&:included_in_map)
+    assert PersonaContent.all.all?(&:included_in_map)
   end
 
   test "old maps (string quotes, no spoken_style) are normalized" do
@@ -63,7 +63,7 @@ class Personas::PersonalityMapBuilderTest < ActiveSupport::TestCase
     add "speech", "Очень длинный устный ответ. " * 200, raw_body: "Ну вот. " * 50
 
     Personas::ExemplarSelector.call(@persona)
-    assert_equal [ post.id ], @persona.contents.exemplars.pluck(:id)
+    assert_equal [ post.id ], @persona.persona_contents.exemplars.pluck(:content_id)
 
     Personas::LinguisticsAnalyzer.call(@persona.id)
     l = @persona.reload.linguistics
