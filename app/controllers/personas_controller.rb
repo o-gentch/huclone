@@ -37,7 +37,7 @@ class PersonasController < ApplicationController
   # Удаляется только Digital Double: материалы остаются в библиотеке
   def destroy
     Current.user.personas.find(params[:id]).destroy
-    redirect_to root_path, notice: "Digital Double удалён. Материалы остались в библиотеке"
+    redirect_to root_path, notice: "Персона удалена. Материалы остались в библиотеке"
   end
 
   def rebuild_portrait

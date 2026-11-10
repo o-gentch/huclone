@@ -16,7 +16,7 @@ Rails.application.routes.draw do
         post :toggle_exemplar
       end
     end
-    resources :recordings, only: [ :index, :new, :create, :show, :destroy ] do
+    resources :recordings, only: [ :new, :create, :show, :destroy ] do
       member do
         post :retry
         post :reprocess

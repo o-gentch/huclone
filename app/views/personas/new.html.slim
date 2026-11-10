@@ -1,16 +1,16 @@
-= content_for :title, "Создать Digital Double"
+= content_for :title, "Создать персону"
 = content_for :narrow, true
 
 .text-center.mb-8
   .blob.blob-lg.mx-auto.mb-4: i
-  h1 Создать Digital Double
+  h1 Создать персону
 
 = form_with model: @persona do |f|
   - if @persona.errors.any?
     .alert.alert-err = @persona.errors.full_messages.first
 
   .field
-    = f.label :name, "Имя Digital Double", class: "label"
+    = f.label :name, "Имя персоны", class: "label"
     = f.text_field :name, placeholder: "Например: Марина", class: "inp", autofocus: true
 
   .field
@@ -18,6 +18,6 @@
       | Описание
       small  (необязательно)
     = f.text_area :system_prompt, placeholder: "Кто это? Какую роль играет и как отвечает?", rows: 4, class: "inp"
-    p.hint Можно оставить пустым — Digital Double сам построит портрет из загруженных текстов.
+    p.hint Можно оставить пустым — Персона сама построит портрет из загруженных текстов.
 
   = f.submit "Создать и добавить тексты →", class: "btn btn-primary btn-block"

@@ -1,7 +1,7 @@
 = content_for :title, @recording.title
 = turbo_stream_from @recording, :page
 
-= link_to "← Все записи", persona_recordings_path(@persona), class: "back"
+= link_to "← Материалы", persona_contents_path(@persona), class: "back"
 .page-head.mt-3
   .min-w-0
     h1.truncate = @recording.title

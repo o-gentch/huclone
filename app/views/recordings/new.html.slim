@@ -1,7 +1,7 @@
 = content_for :title, "Загрузить запись"
 = content_for :narrow, true
 
-= link_to "← Назад", persona_recordings_path(@persona), class: "back"
+= link_to "← Назад", persona_contents_path(@persona), class: "back"
 h1.mt-3.mb-8 Загрузить запись
 
 = form_with url: persona_recordings_path(@persona), multipart: true,

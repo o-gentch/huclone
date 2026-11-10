@@ -12,7 +12,7 @@
 
 h2.mb-3 Подключено к
 - if @links.empty?
-  p.sub.mb-3 Пока ни к одному Digital Double
+  p.sub.mb-3 Пока ни к одной персоне
 - @links.each do |link|
   - mine = @speakers.select { |s| link.speaker_ids.include?(s.id) }
   .card.row
@@ -34,7 +34,7 @@ h2.mb-3 Подключено к
   = form_with url: connect_library_path, class: "flex gap-2 mb-8" do
     = hidden_field_tag "items[]", "recording_#{@recording.id}"
     = select_tag :persona_id, options_for_select(@free_personas.map { |p| [ p.name, p.id ] }), class: "inp w-auto!"
-    = submit_tag "Подключить к DD", class: "btn btn-primary"
+    = submit_tag "Подключить к персоне", class: "btn btn-primary"
 
 - if @recording.audio_file.attached? && @speakers.any?
   div data-controller="audio-player"

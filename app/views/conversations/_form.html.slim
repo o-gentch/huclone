@@ -10,18 +10,22 @@ div id="message_form"
           data: { chat_target: "input", action: "keydown->chat#onKeydown input->chat#onInput" }
 
       .composer-bar
-        .seg
-          - Message::MODES.each do |m|
-            label
-              = f.radio_button :mode, m, checked: (mode == m), class: "sr-only", id: "mode_#{m}"
-              span
-                - case m
-                - when "strict"
-                  | По материалам
-                - when "ideas"
-                  | Идеи
-                - else
-                  | Книга
+        span.composer-hint Enter — отправить, Shift+Enter — новая строка
         button.send type="submit" title="Отправить"
           svg viewBox="0 0 24 24"
             path d="M12 19V5M5 12l7-7 7 7"
+
+    .composer-under
+      .seg
+        - Message::MODES.each do |m|
+          label
+            = f.radio_button :mode, m, checked: (mode == m), class: "sr-only", id: "mode_#{m}"
+            span
+              - case m
+              - when "strict"
+                | По материалам
+              - when "ideas"
+                | Идеи
+              - else
+                | Книга
+      span.composer-who = persona.name

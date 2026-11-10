@@ -54,7 +54,7 @@ module Conversations
         }
       )
 
-      sources = unique_sources(chunks)
+      sources = unique_sources(sources_for_display(chunks, accumulated))
       @assistant_message.update!(body: accumulated, sources: sources)
       broadcast(accumulated, streaming: false)
       broadcast_sources
@@ -84,7 +84,22 @@ module Conversations
 
       top_k = Ai::RagSearch.top_k_for(intent)
       chunks = top_k > Ai::RagSearch::TOP_K ? Ai::RagSearch.call(@persona.id, @user_message.body, top_k: top_k).to_a : first_pass
-      [ Ai::RagSearch.within_budget(chunks), nil ]
+      [ Ai::RagSearch.within_budget(Ai::RagSearch.relevant(chunks)), nil ]
+    end
+
+    # «По материалам» — ответ целиком из найденных фрагментов, показываем их все.
+    # В остальных режимах модель смешивает материалы и собственные знания, поэтому — только те фрагменты,
+    # на которые она сослалась в тексте (название и таймкод).
+    def sources_for_display(chunks, answer)
+      return chunks if @user_message.mode == "strict"
+
+      chunks.select { |c| cited?(c, answer) }
+    end
+
+    def cited?(chunk, answer)
+      return false unless answer.include?(chunk.content.recording&.title.presence || chunk.content.title.to_s)
+
+      chunk.start_ms.nil? || answer.include?(Recording.format_ms(chunk.start_ms))
     end
 
     def unique_sources(chunks)
@@ -152,14 +167,7 @@ module Conversations
     end
 
     def render_body(text, streaming:)
-      paragraphs = text.gsub(/\r\n?/, "\n")
-        .split("\n\n")
-        .map { |para| "<p class=\"mb-3 last:mb-0\">#{CGI.escapeHTML(para).gsub("\n", "<br>")}</p>" }
-        .join
-
-      return paragraphs unless streaming
-
-      paragraphs + "<span class=\"cursor\"></span>"
+      Conversations::BodyRenderer.call(text, streaming: streaming)
     end
   end
 end

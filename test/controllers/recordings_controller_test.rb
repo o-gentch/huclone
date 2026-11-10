@@ -16,17 +16,17 @@ class RecordingsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "anonymous user is redirected, foreign persona is 404" do
-    get persona_recordings_path(@persona)
+    get persona_contents_path(@persona)
     assert_redirected_to new_session_path
 
     sign_in_as users(:two)
-    get persona_recordings_path(@persona)
+    get persona_contents_path(@persona)
     assert_response :not_found
   end
 
   test "owner sees the list and the upload form" do
     sign_in_as @owner
-    get persona_recordings_path(@persona)
+    get persona_contents_path(@persona)
     assert_response :success
     get new_persona_recording_path(@persona)
     assert_response :success
@@ -161,7 +161,7 @@ class RecordingsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as @owner
     recording = create_recording(@persona, audio: true)
     delete persona_recording_path(@persona, recording)
-    assert_redirected_to persona_recordings_path(@persona)
+    assert_redirected_to persona_contents_path(@persona)
     assert_not Recording.exists?(recording.id)
   end
 

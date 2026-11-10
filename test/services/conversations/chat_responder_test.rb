@@ -77,4 +77,48 @@ class Conversations::ChatResponderTest < ActiveSupport::TestCase
     assert_includes html, "#t="
     assert_includes html, "Конференция"
   end
+
+  test "irrelevant fragments are not sent to the model" do
+    Ai::Embeddings.define_singleton_method(:fetch) { |_t| Array.new(1536) { |i| i == 1000 ? 1.0 : 0.0 } }
+    _assistant, prompt = respond("Совсем другая тема", "ideas")
+    assert_no_match(/Релевантные фрагменты/, prompt.last[:content])
+  end
+
+  test "outside strict mode only cited fragments are shown as sources" do
+    assistant, _ = respond("Как вы начинали?", "ideas")
+    assert_empty assistant.sources # модель ни на что не сослалась
+
+    retrieved, _ = respond("Как вы начинали?", "strict")
+    cited_ms = retrieved.sources.first["start_ms"]
+    stamp = Recording.format_ms(cited_ms)
+
+    @fake.define_singleton_method(:chat) do |parameters:|
+      if parameters[:stream]
+        parameters[:stream].call({ "choices" => [ { "delta" => { "content" => "Так было (из выступления «Конференция», #{stamp})." } } ] }, nil)
+        return {}
+      end
+      { "choices" => [ { "message" => { "content" => "answer_question" } } ] }
+    end
+    assistant, _ = respond("Как вы начинали?", "ideas")
+    assert_equal [ cited_ms ], assistant.sources.map { |s| s["start_ms"] }.uniq
+  end
+
+  test "ideas answer with markers renders materials as a collapsed block and the rest as the main text" do
+    html = Conversations::BodyRenderer.call("[[МАТЕРИАЛЫ]]\nАвтор говорил про деньги.\n[[НОВОЕ]]\nА ещё есть инфляция.")
+    assert_match(/<details class="from-materials"><summary>Что есть в ваших материалах<\/summary><p[^>]*>Автор говорил про деньги\./, html)
+    assert_match(/<\/details><p[^>]*>А ещё есть инфляция\./, html)
+    assert_not_includes html, "[["
+
+    streaming = Conversations::BodyRenderer.call("[[МАТЕРИАЛЫ]]\nТекст\n[[НО", streaming: true)
+    assert_not_includes streaming, "[["
+    assert_equal "<p class=\"mb-3 last:mb-0\">Просто ответ.</p>", Conversations::BodyRenderer.call("Просто ответ.")
+  end
+
+  test "ideas prompt asks for the markers on answer-like intents only" do
+    %w[answer_question casual_chat structure_knowledge].each do |intent|
+      assert_includes Conversations::ContextBuilder.build_system(@persona, "ideas", intent), "[[НОВОЕ]]", intent
+    end
+    assert_not_includes Conversations::ContextBuilder.build_system(@persona, "ideas", "write_post"), "[[НОВОЕ]]"
+    assert_not_includes Conversations::ContextBuilder.build_system(@persona, "strict", "answer_question"), "[[НОВОЕ]]"
+  end
 end

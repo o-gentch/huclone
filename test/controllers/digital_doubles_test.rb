@@ -14,7 +14,7 @@ class DigitalDoublesTest < ActionDispatch::IntegrationTest
     get persona_contents_path(@other)
     assert_response :success
     assert_match "Маркетинг", response.body
-    assert_match "＋ Новый Digital Double", response.body
+    assert_match "Новая персона", response.body
 
     get edit_persona_path(@persona)
     assert_response :success
@@ -35,7 +35,7 @@ class DigitalDoublesTest < ActionDispatch::IntegrationTest
     assert_equal 0, PersonaContent.count
   end
 
-  test "other users' Digital Doubles are not editable" do
+  test "other users' Персоны are not editable" do
     foreign = users(:two).personas.create!(name: "X")
     get edit_persona_path(foreign)
     assert_response :not_found

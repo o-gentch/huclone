@@ -58,6 +58,21 @@ module ApplicationHelper
     end
   end
 
+  # Плоские строки сайдбара в духе Claude: иконка-линия + текст, без цветных плиток
+  def side_icon(key)
+    tag.svg((key == :plus ? '<path d="M12 5v14M5 12h14"/>' : NAV_ICONS.fetch(key)).html_safe, viewBox: "0 0 24 24", class: "sico")
+  end
+
+  # «Материалы» подсвечиваются и на страницах видео и импорта: это один раздел
+  SECTION_CONTROLLERS = { contents: %w[contents recordings telegram_imports] }.freeze
+
+  def side_link(label, path, section, child: false)
+    on = SECTION_CONTROLLERS.fetch(section, [ section.to_s ]).include?(controller_name)
+    link_to path, class: [ "srow", ("srow-child" if child), ("on" if on) ].compact.join(" ") do
+      child ? tag.span(label) : safe_join([ side_icon(section), tag.span(label) ])
+    end
+  end
+
   def conversation_title(conversation)
     first = conversation.messages.where(role: "user").order(:created_at).first
     first ? first.body.squish.truncate(40) : "Разговор от #{conversation.created_at.strftime('%d.%m %H:%M')}"

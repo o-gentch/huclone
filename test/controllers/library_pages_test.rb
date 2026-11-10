@@ -44,7 +44,7 @@ class LibraryPagesTest < ActionDispatch::IntegrationTest
     speaker = recording.speakers.find_by(label: "A")
     PersonaRecordings::SelectSpeakers.call(PersonaRecordings::Connect.call(other, recording), speaker_ids: [ speaker.id ])
 
-    get persona_recordings_path(@persona)
+    get persona_contents_path(@persona)
     assert_response :success
     assert_match "нужно выбрать спикера", response.body
 
@@ -52,5 +52,18 @@ class LibraryPagesTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "выбран у: Учитель", response.body
     assert_match "speaker_ids[]", response.body
+  end
+
+  test "materials page filters by videos and posts" do
+    add_content(@persona, kind: "post", title: "Мой пост", body: "т", status: "done")
+    create_recording(@persona, title: "Моё видео")
+
+    get persona_contents_path(@persona, type: "video")
+    assert_match "Моё видео", response.body
+    assert_no_match "Мой пост", response.body
+
+    get persona_contents_path(@persona, type: "post")
+    assert_match "Мой пост", response.body
+    assert_no_match "Моё видео", response.body
   end
 end

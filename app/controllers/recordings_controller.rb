@@ -4,11 +4,6 @@ class RecordingsController < ApplicationController
   before_action :set_persona
   before_action :set_recording, only: %i[show destroy retry reprocess confirm audio]
 
-  def index
-    @recordings = @persona.recordings.for_list.order(created_at: :desc)
-    @links = @persona.persona_recordings.index_by(&:recording_id)
-  end
-
   def new
     @recording = Recording.new
   end
@@ -52,7 +47,7 @@ class RecordingsController < ApplicationController
   def destroy
     @persona_recording.destroy
     @recording.destroy if @recording.persona_recordings.reload.none? # без экрана библиотеки осиротевшая запись не нужна
-    redirect_to persona_recordings_path(@persona), notice: "Запись удалена"
+    redirect_to persona_contents_path(@persona), notice: "Запись удалена"
   end
 
   def retry

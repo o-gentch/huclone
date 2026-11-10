@@ -4,6 +4,8 @@ module Ai
     # structure_knowledge просит охват, поэтому берём больше фрагментов (ограничено MAX_CONTEXT_CHARS)
     TOP_K_BY_INTENT = { "structure_knowledge" => 12, "book" => 12 }.freeze
     MAX_CONTEXT_CHARS = 12_000
+    # Косинусное расстояние: дальше — фрагмент к вопросу не относится и в промпт не попадает
+    MAX_DISTANCE = Float(ENV.fetch("RAG_MAX_DISTANCE", 0.6))
 
     def self.call(...) = new(...).call
 
@@ -41,6 +43,11 @@ module Ai
       Chunk.connection.execute("SET hnsw.iterative_scan = relaxed_order")
     rescue ActiveRecord::StatementInvalid
       nil # старый pgvector без итеративного сканирования
+    end
+
+    # Отбрасывает фрагменты, не относящиеся к вопросу (ближайшие соседи есть всегда, даже если тема другая)
+    def self.relevant(chunks)
+      chunks.select { |c| c.try(:neighbor_distance).nil? || c.neighbor_distance <= MAX_DISTANCE }
     end
 
     # Обрезает набор фрагментов по суммарному размеру

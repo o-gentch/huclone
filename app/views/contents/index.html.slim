@@ -1,23 +1,35 @@
-= content_for :title, "Контент"
+= content_for :title, "Материалы"
+= turbo_stream_from @persona, :recordings
 
 .page-head
   .page-head-l
     .tile.t-peach = section_icon(:contents)
     div
-      h1 Контент
-      .sub Тексты, на которых учится этот Digital Double
-  .flex.items-center.gap-2
-    = link_to "Добавить из библиотеки", library_path(dd: "not:#{@persona.id}"), class: "btn"
+      h1 Материалы
+      .sub Видео и тексты, на которых учится эта персона
+  .flex.items-center.gap-2.flex-wrap
+    = link_to "Из библиотеки", library_path(dd: "not:#{@persona.id}"), class: "btn"
     = link_to "Импорт из Telegram", new_persona_telegram_import_path(@persona), class: "btn"
-    = link_to "＋ Добавить текст", new_persona_content_path(@persona), class: "btn btn-primary"
+    = link_to "＋ Видео", new_persona_recording_path(@persona), class: "btn"
+    = link_to "＋ Текст", new_persona_content_path(@persona), class: "btn btn-primary"
 
-- if @links.empty?
+- if @counts.values.sum.positive?
+  .seg.mb-5
+    - [ [ nil, "Все", @counts.values.sum ], [ "video", "Видео", @counts["video"] ], [ "post", "Тексты", @counts["post"] ] ].each do |type, label, count|
+      = link_to persona_contents_path(@persona, type: type), class: "seg-tab #{'on' if @type == type}" do
+        | #{label} · #{count}
+
+- if @items.empty?
   .empty
     .tile.t-peach = section_icon(:contents)
-    p Пока нет текстов
-    p.sub Добавьте посты, статьи или конспекты — Digital Double научится на них
+    p Пока нет материалов
+    p.sub Загрузите видео или добавьте тексты — персона научится на них
 - else
-  - @links.each do |link|
+  - @items.each do |item|
+    - if item.is_a?(PersonaRecording)
+      = render "recordings/recording", recording: item.recording, persona: @persona, persona_recording: item
+      - next
+    - link = item
     - content = link.content
     .card.row id=dom_id(content)
       .grow
@@ -29,7 +41,7 @@
       - if content.failed?
         = button_to "Повторить", retry_persona_content_path(@persona, content), class: "btn btn-sm", form: { class: "contents" }
       = status_badge(content.status)
-      = button_to persona_content_path(@persona, content), method: :delete, class: "x", title: "Отключить от Digital Double",
+      = button_to persona_content_path(@persona, content), method: :delete, class: "x", title: "Отключить от персоны",
           data: { turbo_confirm: "Отключить «#{content.title}» от «#{@persona.name}»? Если он больше нигде не подключён, будет удалён." }, form: { class: "contents" } do
         svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
           path d="M6 18L18 6M6 6l12 12"

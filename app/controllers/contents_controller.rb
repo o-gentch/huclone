@@ -5,7 +5,14 @@ class ContentsController < ApplicationController
 
   def index
     # Фрагменты речи принадлежат записям и управляются со страницы «Видео»
-    @links = @persona.persona_contents.joins(:content).merge(Content.posts).includes(:content).order("contents.created_at DESC")
+    links = @persona.persona_contents.joins(:content).merge(Content.posts).includes(:content).to_a
+    @recording_links = @persona.persona_recordings.includes(:recording).to_a
+    # Видео и тексты — одним списком, новые сверху
+    @counts = { "post" => links.size, "video" => @recording_links.size }
+    @type = params[:type].presence_in(%w[video post])
+    links = [] if @type == "video"
+    @recording_links = [] if @type == "post"
+    @items = (links + @recording_links).sort_by { |i| i.is_a?(PersonaContent) ? i.content.created_at : i.recording.created_at }.reverse
   end
 
   def new

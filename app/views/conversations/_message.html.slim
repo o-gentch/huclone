@@ -11,6 +11,6 @@
         - if message.body.blank?
           span.typing: i: i: i
         - else
-          = simple_format message.body, {}, wrapper_tag: "span"
+          == Conversations::BodyRenderer.call(message.body)
       div id="message_#{message.id}_sources"
         = render "conversations/sources", message: message, persona: message.conversation.persona

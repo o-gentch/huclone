@@ -6,7 +6,7 @@
     .tile.t-rose = section_icon(:personas)
     div
       h1 Настройки
-      .sub Digital Double «#{@persona.name}»
+      .sub Персона «#{@persona.name}»
 
 = form_with model: @persona do |f|
   - if @persona.errors.any?
@@ -21,7 +21,7 @@
       | Инструкции
       small  (роль и поведение)
     = f.text_area :system_prompt, rows: 6, class: "inp", placeholder: "Например: ты — автор канала про маркетинг, отвечай кратко и с примерами"
-    p.hint Добавляются к каждому ответу этого Digital Double.
+    p.hint Добавляются к каждому ответу этой персоны.
 
   = f.submit "Сохранить", class: "btn btn-primary"
 
@@ -49,5 +49,5 @@ h2.mt-10.mb-3 Портрет
       data: { turbo_confirm: "Портрет будет построен заново по всем материалам. Продолжить?" }
 
 h2.mt-10.mb-3 Удаление
-= button_to "Удалить Digital Double", persona_path(@persona), method: :delete, class: "btn btn-danger btn-sm", form: { class: "contents" },
+= button_to "Удалить персону", persona_path(@persona), method: :delete, class: "btn btn-danger btn-sm", form: { class: "contents" },
     data: { turbo_confirm: "Удалить «#{@persona.name}»? Чаты и темы пропадут, материалы останутся в библиотеке." }

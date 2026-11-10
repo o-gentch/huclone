@@ -5,14 +5,14 @@
     .tile.t-sky = section_icon(:conversations)
     div
       h1 Разговоры
-      .sub Беседы с вашим Digital Double
+      .sub Беседы с вашей персоной
   = button_to "＋ Новый разговор", persona_conversations_path(@persona), method: :post, class: "btn btn-primary", form: { class: "contents" }
 
 - if @conversations.empty?
   .empty
     .tile.t-sky = section_icon(:conversations)
     p Нет разговоров
-    p.sub Начните первый разговор с Digital Double
+    p.sub Начните первый разговор с персоной
 - else
   - @conversations.each do |conversation|
     .card.row

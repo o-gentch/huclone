@@ -25,37 +25,39 @@ html
     .app
       - if persona
         aside.side
-          .brand
-            span.blob: i
-            | Digital Double
+          .brand Digital Double
 
-          = button_to persona_conversations_path(persona), method: :post, class: "newchat", form: { class: "contents" } do
-            | ＋ Новый чат
+          nav.snav
+            = button_to persona_conversations_path(persona), method: :post, class: "srow srow-strong w-full", form: { class: "contents" } do
+              = side_icon(:plus)
+              span Новый чат
+              small.srow-hint = persona.name
+            = side_link "Библиотека", library_path, :library
 
-          nav.nav
-            = nav_link "Библиотека", library_path, :library, "t-butter"
-
-          .side-title Digital Doubles
-          .recent
+          details.sgroup open=true
+            summary Персоны
             - Current.user.personas.order(:id).each do |dd|
-              = link_to dd.name, persona_contents_path(dd), class: ("on" if dd.id == persona.id)
-            = link_to "＋ Новый Digital Double", new_persona_path
+              - active = dd.id == persona.id
+              = link_to persona_contents_path(dd), class: "srow srow-persona #{'on' if active}" do
+                span.sava = dd.name.to_s.first.to_s.upcase
+                span.truncate = dd.name
+              - if active
+                .schild
+                  = side_link "Материалы", persona_contents_path(dd), :contents, child: true
+                  = side_link "Темы", persona_topics_path(dd), :topics, child: true
+                  = side_link "Чат", persona_conversations_path(dd), :conversations, child: true
+                  = side_link "Настройки", edit_persona_path(dd), :personas, child: true
+            = link_to new_persona_path, class: "srow srow-muted newp" do
+              = side_icon(:plus)
+              span Новая персона
 
-          .side-title = persona.name
-          nav.nav
-            = nav_link "Материалы", persona_contents_path(persona), :contents, "t-peach"
-            = nav_link "Видео", persona_recordings_path(persona), :recordings, "t-lav"
-            = nav_link "Темы", persona_topics_path(persona), :topics, "t-sage"
-            = nav_link "Чат", persona_conversations_path(persona), :conversations, "t-sky"
-            = nav_link "Настройки", edit_persona_path(persona), :personas, "t-rose"
-
-          - recent = persona.conversations.order(created_at: :desc).limit(5)
+          - recent = persona.conversations.order(created_at: :desc).limit(8)
           - if recent.any?
-            .side-title Недавние чаты
-            .recent
+            details.sgroup.recent-block open=true
+              summary Недавние чаты
               - recent.each do |conversation|
                 = link_to conversation_title(conversation), persona_conversation_path(persona, conversation),
-                    class: ("on" if params[:id].to_s == conversation.id.to_s && controller_name == "conversations")
+                    class: "srow srow-chat #{'on' if params[:id].to_s == conversation.id.to_s && controller_name == 'conversations'}"
 
           .spacer.flex-1
 
